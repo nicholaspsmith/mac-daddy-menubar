@@ -7,18 +7,18 @@
 Keeps your Mac in line: kills Apple's media trackers, trashes stale downloads, finds orphaned processes burning CPU, and sweats when your process count climbs. Built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit).
 
-**Version 1.1.2** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
+**Version 1.2.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
-Mac Daddy is the dapper mascot you see above, and he is also the app icon. His mood is your process count:
+The menu-bar icon is Mac Daddy's illustrated mascot itself — the same art as the app icon, shrunk — with the live part painted on top. His hat is your process count:
 
-- **Cool, in a purple suit** — plenty of headroom
-- **Sweating, in an amber suit** — the process count is climbing toward the per-user limit
-- **Red-hot, in a red suit** — close to the limit: popped collar, two drops of sweat
+- **Cool, purple hat** — plenty of headroom
+- **Sweating, amber hat** — the process count is climbing toward the per-user limit; a drop of sweat
+- **Red-hot, red hat** — close to the limit: two drops of sweat
 - **Hat tip** — for two seconds after the media-tracker killer or Lost Souls ends something
 - **Chain glint** — for two seconds after the Downloads sweep trashes files
-- **Asleep, grey, with a "z"** — every cleanup is paused
+- **Asleep, eyes closed, grey, with a "z"** — every cleanup is paused (the hat keeps its warning colour)
 
 Prefer a plain symbol? **menu ▸ Icon ▸ Plain symbol**.
 
