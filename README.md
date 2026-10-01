@@ -7,7 +7,7 @@
 Keeps your Mac in line: kills Apple's media trackers, trashes stale downloads, finds orphaned processes burning CPU, and sweats when your process count climbs. Built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit).
 
-**Version 1.1.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
+**Version 1.1.1** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
@@ -29,7 +29,7 @@ Prefer a plain symbol? **menu ▸ Icon ▸ Plain symbol**.
 | Processes | live count against the per-UID limit, a two-minute sparkline, crash-looping processes, Top Spawners (each opens a detail window), Zombies (when one of your own, non-system processes is holding zombies: "Quit <parent> to reap N", which asks before quitting it), Open Activity Monitor |
 | Media Tracking ▸ Enabled / Kill Now / Interval / Processes | kills Apple's media analysis daemons every 5 / 15 / 30 / 60 s; one toggle per daemon |
 | Downloads ▸ Enabled / Sweep Now / Keep Files For / Open Log | checks every 30 minutes and sweeps at most once a day (once 24 h have passed since the last sweep), moving files older than 7 / 14 / 30 / 60 / 90 days from `~/Downloads` to the Trash (restorable, never a hard delete); Sweep Now runs one immediately |
-| Lost Souls ▸ Enabled / each soul ▸ End, Spare / Banish Automatically | samples your processes every 30 s; a *lost soul* is one of yours that launchd adopted (parent PID 1) and that averaged over 50% CPU for 10 minutes — a hung headless test run, a script whose terminal closed. Apps, launchd jobs, normally orphaned daemons (cfprefsd, mds, tmux, ollama, …) and souls you Spare are left out. Mac Daddy notifies you once and lists it as `name [pid] — X% for M min`; **End** sends SIGTERM, then SIGKILL after 5 s. Nothing is ended unless you click End or turn on **Banish Automatically** (off by default), which ends a soul once it has been listed for 30 minutes |
+| Lost Souls ▸ Enabled / each soul ▸ End, Spare / Banish Automatically | samples your processes every 30 s; a *lost soul* is one of yours that launchd adopted (parent PID 1) and that averaged over 50% CPU for 10 minutes — a hung headless test run, a script whose terminal closed. Apps, launchd jobs, XPC services and app extensions (Safari tabs, virtual machines), macOS's own programs, helpers a background service or their own app is responsible for, normally orphaned daemons (cfprefsd, mds, tmux, ollama, …) and souls you Spare are left out. Time asleep doesn't count. Mac Daddy notifies you once and lists it as `name [pid] — X% for M min` (the 8 hungriest, then "and N more…"; "None wandering" when there are none); **End** checks it is still the same process, sends SIGTERM, then SIGKILL after 5 s. Nothing is ended unless you click End or turn on **Banish Automatically** (off by default), which ends a soul once it has qualified continuously for 30 minutes |
 | Icon | Mac Daddy or plain symbol |
 | Start at Login | SMAppService — no launchd agent |
 

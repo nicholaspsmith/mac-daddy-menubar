@@ -8,6 +8,14 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.1.1] - 2026-10-01
+
+- Lost Souls no longer flags Safari/WebKit tabs, virtual machines, other XPC services, app extensions or macOS's own background programs, and leaves alone helpers that a background service or their own app is responsible for
+- Time asleep (or with Lost Souls turned off) no longer counts toward the 10 minutes; turning Lost Souls off and on starts afresh
+- End works on programs that rename themselves, and checks it is still the very same process (start time, no parent, yours) before each signal; if it isn't, a ⚠ says so instead of ending something else
+- The "Not allowed to end …" warning clears once that process is gone, after a later End works, or when Lost Souls is toggled
+- Several lost souls at once get one notification; the menu lists the 8 hungriest plus "and N more…"; Banish Automatically notifies once per process
+
 ## [1.1.0] - 2026-10-01
 
 - New **Lost Souls** duty: spots any of your own processes that has been orphaned (no parent) and burning more than 50% CPU for 10 minutes, notifies you once, and lists it in the menu with **End** and **Spare**. Apps, launchd jobs and normal background daemons are left out

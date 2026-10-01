@@ -138,6 +138,18 @@ unless it is:
   `.accessory` app (headless Godot runs from `Godot.app/Contents/MacOS/Godot`
   but has no running-application entry, so it still counts);
 - a launchd job (its PID is in `launchctl list`'s PID column);
+- an XPC service, app extension or OS binary (1.1.1): its real path
+  (`proc_pidpath`, not `ps` comm) contains `.xpc/` or `.appex/`, or starts
+  with `/System/`, `/usr/libexec/`, `/usr/sbin/` or `/Library/Apple/` —
+  these are not even tracked;
+- held by macOS to be the responsibility (1.1.1,
+  `responsibility_get_pid_responsible_for_pid`) of a different process that
+  is a launchd job with a non-`application.*` label (a daemon/agent), or of a
+  running app whose `.app` bundle contains this executable. A responsible
+  app alone does **not** exclude: every orphan started from a terminal is
+  attributed to the terminal app (iTerm2), and GUI apps are themselves
+  `application.*` launchd jobs, so the literal "responsible is an app or a
+  launchd job" rule would exclude every real lost soul;
 - on the built-in allowlist of basenames that are normally orphaned
   (`launchd`, `loginwindow`, `WindowServer`, `cfprefsd`, `distnoted`,
   `mdworker`, `mdworker_shared`, `mds`, `mds_stores`, `trustd`,
@@ -151,15 +163,25 @@ unless it is:
 with the comm and start time (now − etime, ±3 s) as identity, so a reused PID
 starts over; it keeps just enough samples to span the window and forgets PIDs
 that exit or stop being orphans. A soul qualifies when its samples span ≥ the
-window and their mean is > 50 %.
+window, there are at least 80 % of the samples a fully covered window would
+have, and their mean is > 50 %. A track whose last sample is older than 3
+sample intervals (sleep) starts over; turning the duty off discards all
+tracks. Since 1.1.1 identity is the exact start time from
+`proc_pidinfo(PROC_PIDTBSDINFO)`, samples are stamped when `ps` returned, and
+names/allowlist use the real path's basename.
 
 **Behaviour.** Never kills by default. The first time a soul qualifies:
 notification "`<name>` (pid N) has been burning X% CPU for M min with no
-parent". **End** re-checks the PID still runs the same executable, sends
-SIGTERM, and SIGKILL after 5 s if the same process is still alive; hat tip on
-success. EPERM shows a ⚠ line under the heading; ESRCH is not an error.
+parent". **End** re-checks, before SIGTERM and again before the SIGKILL 5 s
+later, that the PID still has the soul's start time (within 1 s), PPID 1 and
+your UID (no name comparison, so self-renaming processes work); if not, a ⚠
+"<name> changed — not ended". Hat tip on success. EPERM shows a ⚠ line under
+the heading, cleared when that soul is gone, after a later successful End, or
+on toggling; ESRCH is not an error. Spare keys on pid + start time.
 **Banish Automatically** (off by default) ends, by the same path, any soul
-that has qualified for 30 minutes, with a notification.
+that has qualified continuously for 30 minutes, notifying once per process.
+Several new souls in one round get one summary notification; the menu shows
+the 8 hungriest plus "and N more…".
 
 **Migration.** `migration.version` 2 copies `reaper.enabled` into
 `lostSouls.enabled` if set and of the right type, never overwriting. The
