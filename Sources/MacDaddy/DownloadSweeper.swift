@@ -42,13 +42,12 @@ final class DownloadSweeper: NSObject, Duty {
     func tick(now: Date) {
         guard now.timeIntervalSince(lastCheck) >= checkEvery else { return }
         lastCheck = now
-        if enabled && now.timeIntervalSince(lastSweep) >= sweepEvery { sweep(manual: false) }
+        if enabled && (lastError != nil || now.timeIntervalSince(lastSweep) >= sweepEvery) { sweep(manual: false) }
     }
 
     private func sweep(manual: Bool) {
         guard !sweeping else { return }
         sweeping = true
-        lastSweep = Date()
         let days = daysToKeep
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self else { return }
@@ -72,6 +71,7 @@ final class DownloadSweeper: NSObject, Duty {
                 self.sweeping = false
                 self.lastError = failure
                 guard failure == nil else { return }
+                self.lastSweep = Date()
                 self.trashedLastSweep = trashed
                 self.log("Sweep done (threshold \(days)d): \(trashed) item(s) trashed")
                 if trashed > 0 || manual {

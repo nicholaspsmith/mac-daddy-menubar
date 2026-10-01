@@ -33,7 +33,7 @@ final class TrackerKiller: NSObject, Duty {
     func targetEnabled(_ p: String) -> Bool { defaults.object(forKey: "tracker.target.\(p)") as? Bool ?? true }
 
     func tick(now: Date) {
-        if enabled && now.timeIntervalSince(lastSweep) >= Double(intervalSeconds) { sweep(now: now) }
+        if enabled && now.timeIntervalSince(lastSweep) >= Double(intervalSeconds) - 0.5 { sweep(now: now) }
     }
 
     /// killall exits non-zero when nothing matched, which Shell.run reports as nil.
@@ -51,9 +51,9 @@ final class TrackerKiller: NSObject, Duty {
         let toggle = NSMenuItem(title: "Enabled", action: #selector(toggleEnabled), keyEquivalent: "")
         toggle.target = self; toggle.state = enabled ? .on : .off
         menu.addItem(indented(toggle))
-        let kill = NSMenuItem(title: "Kill Now (\(killsThisSession) this session)", action: #selector(killNow), keyEquivalent: "")
-        kill.target = self
-        menu.addItem(indented(kill))
+        let killNowItem = NSMenuItem(title: "Kill Now (\(killsThisSession) this session)", action: #selector(killNow), keyEquivalent: "")
+        killNowItem.target = self
+        menu.addItem(indented(killNowItem))
 
         let interval = NSMenuItem(title: "Interval", action: nil, keyEquivalent: "")
         let im = NSMenu()
