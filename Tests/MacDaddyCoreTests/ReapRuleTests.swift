@@ -31,4 +31,17 @@ final class ReapRuleTests: XCTestCase {
         let ps = "\n  PID ELAPSED COMMAND\nnot-a-pid 99:99 MacOS/Godot --headless\n  7\n"
         XCTAssertEqual(ReapRule.pidsToReap(psOutput: ps, thresholdSeconds: 0), [])
     }
+
+    func testReapsGodotInAPathWithSpaces() {
+        let ps = "  201   20:00 /Applications/Godot Engine.app/Contents/MacOS/Godot --headless --path /Users/someone/game"
+        XCTAssertEqual(ReapRule.pidsToReap(psOutput: ps, thresholdSeconds: 900), [201])
+    }
+
+    func testThresholdBoundary() {
+        let ps = """
+          301   15:00 /Applications/Godot.app/Contents/MacOS/Godot --headless
+          302   14:59 /Applications/Godot.app/Contents/MacOS/Godot --headless
+        """
+        XCTAssertEqual(ReapRule.pidsToReap(psOutput: ps, thresholdSeconds: 900), [301])
+    }
 }

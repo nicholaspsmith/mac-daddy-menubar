@@ -29,14 +29,24 @@ public enum ReapRule {
     /// `psOutput` from `ps -Axo pid=,etime=,command=`.
     public static func pidsToReap(psOutput: String, thresholdSeconds: Int) -> [Int] {
         psOutput.split(separator: "\n").compactMap { line in
-            let f = line.split(separator: " ", maxSplits: 3, omittingEmptySubsequences: true)
-            guard f.count >= 3, let pid = Int(f[0]), let age = elapsedSeconds(String(f[1])) else { return nil }
-            let exe = f[2]
-            let args = f.count == 4 ? f[3] : ""
-            guard exe.hasSuffix("MacOS/Godot"),
-                  args.split(separator: " ").contains("--headless"),
+            let f = line.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
+            guard f.count == 3, let pid = Int(f[0]), let age = elapsedSeconds(String(f[1])),
                   age >= thresholdSeconds else { return nil }
-            return pid
+            // The rest of the line is the command; its path may contain spaces.
+            let command = f[2]
+            let marker = "MacOS/Godot"
+            var search = command.startIndex..<command.endIndex
+            while let r = command.range(of: marker, range: search) {
+                if r.upperBound == command.endIndex || command[r.upperBound] == " " {
+                    let exe = command[..<r.upperBound]
+                    let args = command[r.upperBound...]
+                    guard !exe.contains(" -"),
+                          args.split(separator: " ").contains("--headless") else { return nil }
+                    return pid
+                }
+                search = r.upperBound..<command.endIndex
+            }
+            return nil
         }
     }
 }
