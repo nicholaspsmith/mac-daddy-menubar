@@ -56,9 +56,13 @@ final class DownloadSweeper: NSObject, Duty {
             var failure: String?
             var trashed = 0
             do {
-                let urls = try fm.contentsOfDirectory(at: downloads, includingPropertiesForKeys: [.contentModificationDateKey],
+                let keys: Set<URLResourceKey> = [.contentModificationDateKey, .addedToDirectoryDateKey]
+                let urls = try fm.contentsOfDirectory(at: downloads, includingPropertiesForKeys: Array(keys),
                                                       options: [.skipsHiddenFiles])
-                let items = urls.map { DownloadItem(url: $0, modified: (try? $0.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate) }
+                let items = urls.map { url -> DownloadItem in
+                    let v = try? url.resourceValues(forKeys: keys)
+                    return DownloadItem(url: url, modified: v?.contentModificationDate, added: v?.addedToDirectoryDate)
+                }
                 for url in DownloadAge.expired(items, daysToKeep: days, now: Date()) {
                     do { try fm.trashItem(at: url, resultingItemURL: nil); trashed += 1; self.log("Trashed: \(url.lastPathComponent)") }
                     catch { self.log("FAILED to trash \(url.lastPathComponent): \(error.localizedDescription)") }

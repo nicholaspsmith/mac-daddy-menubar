@@ -28,4 +28,28 @@ final class DownloadAgeTests: XCTestCase {
     func testEmptyFolder() {
         XCTAssertEqual(DownloadAge.expired([], daysToKeep: 7, now: now), [])
     }
+
+    func date(_ ageDays: Double?) -> Date? { ageDays.map { now.addingTimeInterval(-$0 * day) } }
+
+    func testOldModificationButAddedYesterdayIsKept() {
+        let i = DownloadItem(url: URL(fileURLWithPath: "/tmp/unzipped"), modified: date(400), added: date(1))
+        XCTAssertEqual(i.date, date(1))
+        XCTAssertEqual(DownloadAge.expired([i], daysToKeep: 30, now: now), [])
+    }
+
+    func testBothDatesOldIsExpired() {
+        let i = DownloadItem(url: URL(fileURLWithPath: "/tmp/stale"), modified: date(40), added: date(35))
+        XCTAssertEqual(DownloadAge.expired([i], daysToKeep: 30, now: now).map(\.lastPathComponent), ["stale"])
+    }
+
+    func testMissingAddedDateFallsBackToModified() {
+        let old = DownloadItem(url: URL(fileURLWithPath: "/tmp/old"), modified: date(40), added: nil)
+        let new = DownloadItem(url: URL(fileURLWithPath: "/tmp/new"), modified: date(2), added: nil)
+        XCTAssertEqual(DownloadAge.expired([old, new], daysToKeep: 30, now: now).map(\.lastPathComponent), ["old"])
+    }
+
+    func testMissingModifiedDateUsesAdded() {
+        let i = DownloadItem(url: URL(fileURLWithPath: "/tmp/x"), modified: nil, added: date(40))
+        XCTAssertEqual(DownloadAge.expired([i], daysToKeep: 30, now: now).count, 1)
+    }
 }

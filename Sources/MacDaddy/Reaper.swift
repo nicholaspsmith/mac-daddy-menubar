@@ -32,7 +32,8 @@ final class Reaper: NSObject, Duty {
 
     private func reap(now: Date) {
         lastRun = now
-        guard let ps = Shell.run("/bin/ps", ["-Axo", "pid=,etime=,command="]) else {
+        // Only your own processes: another user's Godot would only ever be an EPERM.
+        guard let ps = Shell.run("/bin/ps", ["-U", String(getuid()), "-o", "pid=,etime=,command=", "-ww"]) else {
             lastError = "Couldn't list processes"; return
         }
         lastError = nil

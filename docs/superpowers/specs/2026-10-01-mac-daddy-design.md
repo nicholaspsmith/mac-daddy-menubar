@@ -16,7 +16,7 @@ Plus two jobs that today live outside the suite:
 
 - **godot-headless-reaper** — launchd agent + `~/.local/bin` script that
   SIGKILLs hung headless Godot test runs.
-- **Zombie count** — a general "zombies: N" reading with a Reap action (the
+- **Zombie count** — a general "zombies: N" reading with a "Quit <parent> to reap N" action (the
   Pioneer `FwUpdateManagerd` leak that motivated it is gone, but the next
   leaker will show up here first).
 
@@ -56,7 +56,10 @@ SMAppService (offered by `install.sh`, never turned on unasked). Runs a
   to kill: command contains `MacOS/Godot --headless`, elapsed ≥ threshold
   (default 900 s). Never the editor (`-e`, no `--headless`).
 - `ZombieCount` — parses `ps -axo stat=` output, counts states starting `Z`,
-  and reports the top parent PIDs.
+  and offers the parent with the most zombies for quitting — only one of
+  your own, never PID 1, Mac Daddy itself, or a system process
+  (loginwindow, WindowServer, Dock, Finder, SystemUIServer, ControlCenter,
+  launchd).
 - `DownloadAge` — given file URLs + modification/added dates + days-to-keep,
   returns the ones to trash.
 
@@ -70,7 +73,7 @@ reports to the app through two callbacks: `onSweep(Flourish)` and
 |---|---|---|---|
 | `TrackerKiller` | SIGINT to `mediaanalysisd`, `mediaanalysisd-access`, `photoanalysisd` (each toggleable) | 5/15/30/60 s, default 15 | `tracker.enabled`, `tracker.intervalSeconds`, `tracker.target.<name>` |
 | `DownloadSweeper` | `FileManager.trashItem` for files older than N days in `~/Downloads`; notifies with the count; appends to `~/Library/Logs/download-recycler.log` (path kept so the audit trail stays continuous) | checks every 30 min, sweeps once 24 h have passed since `lastSweep` (as Download Recycler does today) | `downloads.enabled`, `downloads.daysToKeep` (7/14/30/60/90, default 30), `downloads.lastSweep` |
-| `ProcessWatch` | per-UID process count vs `kern.maxprocperuid`, mirroring `ps -u $USER \| wc -l`; notifies once when crossing 85 % (re-arms below 80 %); zombie count; sparkline, crash-loop detection and top spawners as Process Monitor has them; detail window (moved from `ProcessDetailWindow.swift`) | 5 s | none (always on) |
+| `ProcessWatch` | per-UID process count vs `kern.maxprocperuid`, mirroring `ps -u $USER \| wc -l` but counted with `sysctl(KERN_PROC_RUID)` so a full process table cannot blind it (a failed read at ≥ 85 % holds the last fraction); notifies once when crossing 85 % (re-arms below 80 %); zombie count; sparkline, crash-loop detection and top spawners as Process Monitor has them; detail window (moved from `ProcessDetailWindow.swift`) | 5 s | none (always on) |
 | `Reaper` | SIGKILL hung headless Godot runs per `ReapRule` | 300 s | `reaper.enabled`, `reaper.thresholdSeconds` (default 900) |
 
 `TrackerKiller` emits `.hatTip` on a kill that hit at least one live process;
@@ -91,7 +94,9 @@ Processes  1234 / 2666 (46%)
   ▁▂▃▅▃▂  1180→1240                 (sparkline, ~2 min)
   ⚠ Crash-looping (N) ▸             (only when present)
   Top Spawners ▸                    → each opens the detail window
-  Zombies  0                        (Reap Now when > 0)
+  Zombies  0
+    Quit <parent> [pid] to reap N   (only for one of your own, non-system
+                                     processes; asks to confirm first)
   Open Activity Monitor
 ────────────
 Media Tracking
