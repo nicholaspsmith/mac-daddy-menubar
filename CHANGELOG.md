@@ -8,6 +8,15 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.0.2] - 2026-10-01
+
+- Zombies: "Quit <parent>" is never offered for system processes (loginwindow, WindowServer, Dock, Finder and friends) or Mac Daddy himself, asks before quitting, re-checks the process is still the same one, and shows a ⚠ line if macOS refuses
+- The process count no longer needs to start `ps`, so it keeps working (and Mac Daddy keeps sweating) when the process table is full; it now counts exactly what `ps -u $USER` and the per-user limit count
+- Downloads counts a file's age from the later of when it was modified and when it arrived in Downloads, so freshly unzipped or copied old files are no longer trashed straight away
+- Godot Reaper only looks at your own processes
+- The installer no longer aborts if you press Ctrl-D at the Start at Login question
+- README and design notes describe the Zombies action as it really works
+
 ## [1.0.1] - 2026-10-01
 
 - The installer no longer stops halfway if the old godot-headless-reaper script can't be moved to the Trash; it tells you to delete it by hand

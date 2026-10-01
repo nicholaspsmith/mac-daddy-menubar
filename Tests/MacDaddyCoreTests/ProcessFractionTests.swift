@@ -13,4 +13,19 @@ final class ProcessFractionTests: XCTestCase {
         XCTAssertNil(processFraction(count: nil, limit: 2666))
         XCTAssertNil(processFraction(count: 10, limit: 0))
     }
+
+    func testFreshReadingAlwaysWins() {
+        XCTAssertEqual(reportedFraction(reading: 0.3, lastGood: 0.95), 0.3)
+        XCTAssertEqual(reportedFraction(reading: 0.9, lastGood: nil), 0.9)
+    }
+
+    func testFailedReadAtTheLimitKeepsTheLastGoodFraction() {
+        XCTAssertEqual(reportedFraction(reading: nil, lastGood: 0.85), 0.85)
+        XCTAssertEqual(reportedFraction(reading: nil, lastGood: 0.99), 0.99)
+    }
+
+    func testFailedReadBelowTheLimitIsUnknown() {
+        XCTAssertNil(reportedFraction(reading: nil, lastGood: 0.84))
+        XCTAssertNil(reportedFraction(reading: nil, lastGood: nil))
+    }
 }

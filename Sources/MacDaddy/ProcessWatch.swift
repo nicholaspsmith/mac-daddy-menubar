@@ -20,6 +20,39 @@ func readAllProcs() -> [ProcRec]? {
     return parseProcs(text)
 }
 
+/// Processes whose real UID is yours, counted with sysctl(KERN_PROC_RUID) so
+/// it works even when the process table is full and spawning `ps` would fail
+/// (exactly when the count matters most). Real UID is what both
+/// kern.maxprocperuid and `ps -u $USER` count (setuid `login` shells included).
+/// nil only if the sysctl itself fails.
+func countUserProcesses() -> Int? {
+    var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_RUID, Int32(bitPattern: getuid())]
+    let stride = MemoryLayout<kinfo_proc>.stride
+    for _ in 0..<3 {
+        var size = 0
+        guard sysctl(&mib, UInt32(mib.count), nil, &size, nil, 0) == 0, size > 0 else { return nil }
+        size += 32 * stride   // room for processes born between the two calls
+        var buffer = [kinfo_proc](repeating: kinfo_proc(), count: size / stride)
+        let rc = buffer.withUnsafeMutableBytes { raw -> Int32 in
+            var got = raw.count
+            let r = sysctl(&mib, UInt32(mib.count), raw.baseAddress, &got, nil, 0)
+            size = got
+            return r
+        }
+        if rc == 0 { return size / stride }
+        guard errno == ENOMEM else { return nil }
+    }
+    return nil
+}
+
+/// The executable path of `pid`, or nil when it is gone or unreadable.
+func executablePath(of pid: pid_t) -> String? {
+    var buf = [CChar](repeating: 0, count: 4 * Int(MAXPATHLEN))
+    let n = proc_pidpath(pid, &buf, UInt32(buf.count))
+    guard n > 0 else { return nil }
+    return String(cString: buf)
+}
+
 /// Per-user process count against kern.maxprocperuid, crash-loops, top
 /// spawners and zombies. Always on. Was Process Monitor.
 final class ProcessWatch: NSObject, Duty {
@@ -39,33 +72,41 @@ final class ProcessWatch: NSObject, Duty {
     private var lastNotifiedAtOrAbove = false
     private var latestProcs: [ProcRec] = []
     private(set) var count: Int?
+    private(set) var fraction: Double?
+    private var lastGoodFraction: Double?
+    private var zombieError: String?
+    private var zombieErrorPID: Int?
     private var zombies = ZombieReport(count: 0, quittable: nil)
     private var detailWindows: [ProcessDetailWindowController] = []
 
     init(notifier: Notifier) { self.notifier = notifier }
-
-    var fraction: Double? { processFraction(count: count, limit: limit) }
 
     func tick(now: Date) {
         guard now.timeIntervalSince(lastPoll) >= pollSeconds - 0.5, !pollInFlight else { return }
         lastPoll = now
         pollInFlight = true
         pollQueue.async { [weak self] in
+            let n = countUserProcesses()
             let procs = readAllProcs()
-            let zps = Shell.run("/bin/ps", ["-axo", "pid=,ppid=,user=,stat=,comm="])
-            DispatchQueue.main.async { self?.apply(procs: procs, zombiePS: zps) }
+            let zps = Shell.run("/bin/ps", ["-axo", "pid=,ppid=,user=,stat=,comm=", "-ww"])
+            DispatchQueue.main.async { self?.apply(count: n, procs: procs, zombiePS: zps) }
         }
     }
 
-    private func apply(procs: [ProcRec]?, zombiePS: String?) {
+    /// `n` (sysctl) drives the count, fraction and sparkline; `procs` (ps)
+    /// only feeds the menu details and may be nil when the table is full.
+    private func apply(count n: Int?, procs: [ProcRec]?, zombiePS: String?) {
         pollInFlight = false
         let user = NSUserName()
         if let all = procs {
             latestProcs = all
-            let n = all.reduce(0) { $0 + ($1.user == user ? 1 : 0) }
-            count = n
-            history.record(n)
             respawn.record(all)
+        }
+        count = n
+        fraction = reportedFraction(reading: processFraction(count: n, limit: limit), lastGood: lastGoodFraction)
+        if let n {
+            lastGoodFraction = processFraction(count: n, limit: limit)
+            history.record(n)
             let pct = n * 100 / max(limit, 1)
             if pct >= warnPct {
                 if !lastNotifiedAtOrAbove {
@@ -76,16 +117,18 @@ final class ProcessWatch: NSObject, Duty {
             } else if pct < warnPct - 5 {
                 lastNotifiedAtOrAbove = false
             }
-        } else {
-            count = nil
         }
-        if let zps = zombiePS { zombies = ZombieCount.parse(zps, user: user) }
+        if let zps = zombiePS {
+            zombies = ZombieCount.parse(zps, user: user, excludingPID: Int(getpid()))
+            // A refused quit stays reported until a poll no longer offers that parent.
+            if zombies.quittable?.pid != zombieErrorPID { zombieError = nil; zombieErrorPID = nil }
+        }
         onChange?()
     }
 
     func addMenuItems(to menu: NSMenu) {
         let title = count.map { "Processes  \($0) / \(limit) (\($0 * 100 / max(limit, 1))%)" } ?? "Processes  —"
-        heading(title, error: nil).forEach(menu.addItem)
+        heading(title, error: zombieError).forEach(menu.addItem)
 
         let mono = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         var spark = history.sparkline()
@@ -122,7 +165,7 @@ final class ProcessWatch: NSObject, Duty {
         menu.addItem(indented(z))
         if let p = zombies.quittable {
             let q = NSMenuItem(title: "Quit \(displayName(p.comm)) [\(p.pid)] to reap \(p.zombies)", action: #selector(quitZombieParent(_:)), keyEquivalent: "")
-            q.target = self; q.representedObject = NSNumber(value: p.pid)
+            q.target = self; q.representedObject = p
             q.indentationLevel = 2
             menu.addItem(q)
         }
@@ -140,11 +183,33 @@ final class ProcessWatch: NSObject, Duty {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    /// SIGTERM to the parent; launchd then reaps its zombies. Only offered for
-    /// your own processes, never PID 1 (ZombieCount enforces both).
+    /// SIGTERM to the parent after a confirmation; launchd then reaps its
+    /// zombies. ZombieCount only offers your own, non-system processes and
+    /// never Mac Daddy; the PID is re-checked here (and again after the alert)
+    /// because it may have exited and been reused since the menu was built.
     @objc private func quitZombieParent(_ sender: NSMenuItem) {
-        guard let pid = (sender.representedObject as? NSNumber)?.int32Value else { return }
-        kill(pid, SIGTERM)
+        guard let p = sender.representedObject as? ZombieParent else { return }
+        let pid = pid_t(p.pid)
+        guard ZombieCount.stillSameProcess(expectedComm: p.comm, currentPath: executablePath(of: pid)) else { return refresh() }
+        let name = displayName(p.comm)
+        let alert = NSAlert()
+        alert.messageText = "Quit \(name)?"
+        alert.informativeText = "Its \(p.zombies) zombie process\(p.zombies == 1 ? "" : "es") will be cleaned up."
+        alert.addButton(withTitle: "Quit \(name)")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn,
+              ZombieCount.stillSameProcess(expectedComm: p.comm, currentPath: executablePath(of: pid)) else { return refresh() }
+        if kill(pid, SIGTERM) == 0 || errno == ESRCH {   // ESRCH: already gone — not an error.
+            zombieError = nil; zombieErrorPID = nil
+        } else if errno == EPERM {
+            zombieError = "Not allowed to quit \(name) [\(pid)]"
+            zombieErrorPID = p.pid
+        }
+        refresh()
+    }
+
+    private func refresh() {
         lastPoll = .distantPast
         tick(now: Date())
     }

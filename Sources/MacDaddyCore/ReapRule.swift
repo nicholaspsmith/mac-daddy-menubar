@@ -26,7 +26,7 @@ public enum ReapRule {
         return ((days * 24 + h) * 60 + m) * 60 + s
     }
 
-    /// `psOutput` from `ps -Axo pid=,etime=,command=`.
+    /// `psOutput` from `ps -U <uid> -o pid=,etime=,command=`.
     public static func pidsToReap(psOutput: String, thresholdSeconds: Int) -> [Int] {
         psOutput.split(separator: "\n").compactMap { line in
             let f = line.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)

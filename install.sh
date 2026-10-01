@@ -57,7 +57,7 @@ BIN="$APP/Contents/MacOS/MacDaddy"
 PROC="${APP##*/}/Contents/MacOS/MacDaddy"
 if [ "$("$BIN" --login status 2>/dev/null)" = "on" ]; then echo "Start at Login: already on"
 elif [ -t 0 ]; then
-    read -r -p "Start Mac Daddy at login? [Y/n] " answer
+    read -r -p "Start Mac Daddy at login? [Y/n] " answer || answer=n
     case "$answer" in
         [nN]*) echo "Start at Login: left off (turn it on from the menu)" ;;
         *) "$BIN" --login on >/dev/null && echo "Start at Login: on" || echo "Start at Login: could not register (turn it on from the menu)" >&2 ;;
