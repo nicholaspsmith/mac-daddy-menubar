@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.1.2] - 2026-10-01
+
+- Mac Daddy keeps working if a private macOS function it uses goes away (Lost Souls then skips only its responsible-process check)
+
 ## [1.1.1] - 2026-10-01
 
 - Lost Souls no longer flags Safari/WebKit tabs, virtual machines, other XPC services, app extensions or macOS's own background programs, and leaves alone helpers that a background service or their own app is responsible for

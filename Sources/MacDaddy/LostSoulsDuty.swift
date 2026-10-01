@@ -10,10 +10,6 @@ import StatusItemKit
 
 private let log = Logger(subsystem: "com.nicholaspsmith.MacDaddy", category: "lostSouls")
 
-/// Private but stable libsystem call (libquarantine): the PID macOS holds
-/// responsible for `pid` — the app or daemon that launched it, through XPC too.
-@_silgen_name("responsibility_get_pid_responsible_for_pid")
-private func responsibility_get_pid_responsible_for_pid(_ pid: pid_t) -> pid_t
 
 /// The BSD info of a live process, or nil when it is gone.
 private func bsdInfo(_ pid: pid_t) -> proc_bsdinfo? {
@@ -28,10 +24,12 @@ private func startDate(_ info: proc_bsdinfo) -> Date {
 
 private func procDetail(_ pid: Int) -> LostSouls.ProcDetail {
     let p = pid_t(pid)
-    let r = responsibility_get_pid_responsible_for_pid(p)
+    // The PID macOS holds responsible for `pid` (the app or daemon that
+    // launched it, through XPC too); nil when the private call is unavailable.
+    let r = Responsibility.shared?(pid)
     return LostSouls.ProcDetail(path: executablePath(of: p), start: bsdInfo(p).map(startDate),
-                                responsiblePID: r > 0 ? Int(r) : nil,
-                                responsiblePath: r > 0 && r != p ? executablePath(of: r) : nil)
+                                responsiblePID: r,
+                                responsiblePath: r.flatMap { $0 != pid ? executablePath(of: pid_t($0)) : nil })
 }
 
 /// Finds your own orphaned processes that have burned CPU for ten minutes and
@@ -59,7 +57,13 @@ final class LostSoulsDuty: NSObject, Duty {
     private var banished = Set<String>()
     private(set) var current: [LostSouls.Soul] = []
 
-    init(notifier: Notifier) { self.notifier = notifier }
+    init(notifier: Notifier) {
+        self.notifier = notifier
+        super.init()
+        if Responsibility.shared == nil {
+            log.error("\(Responsibility.symbol, privacy: .public) unavailable: skipping the responsible-process exclusion")
+        }
+    }
 
     var enabled: Bool {
         get { defaults.object(forKey: "lostSouls.enabled") as? Bool ?? true }

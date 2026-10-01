@@ -148,7 +148,9 @@ unless it is:
   running app whose `.app` bundle contains this executable. A responsible
   app alone does **not** exclude: every orphan started from a terminal is
   attributed to the terminal app (iTerm2), and GUI apps are themselves
-  `application.*` launchd jobs, so the literal "responsible is an app or a
+  `application.*` launchd jobs (1.1.2: the call is resolved at runtime with
+  `dlsym(RTLD_DEFAULT, …)`; if it is missing this check is skipped and logged
+  once, and the path rules still apply), so the literal "responsible is an app or a
   launchd job" rule would exclude every real lost soul;
 - on the built-in allowlist of basenames that are normally orphaned
   (`launchd`, `loginwindow`, `WindowServer`, `cfprefsd`, `distnoted`,
