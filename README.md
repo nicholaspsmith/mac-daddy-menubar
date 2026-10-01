@@ -1,8 +1,8 @@
 # Mac Daddy
 
-<p align="center"><img src="docs/mascot.png" width="160" alt="Mac Daddy mascot, from the Menubarn widget library"></p>
+<p align="center"><img src="docs/mascot.png" width="160" alt="Mac Daddy mascot, from Menumon"></p>
 
-<p align="center">Part of the <a href="https://widgets.nicksmith.software">Menubarn</a> widget library.</p>
+<p align="center">Part of <strong><a href="https://menumon.nicksmith.software">Menumon</a></strong>.</p>
 
 Keeps your Mac in line: kills Apple's media trackers, trashes stale downloads, finds orphaned processes burning CPU, and sweats when your process count climbs. Built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit).
