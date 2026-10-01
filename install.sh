@@ -23,12 +23,13 @@ echo "Linked $HOME/Applications/$APP_NAME -> $SRC_DIR/build/$APP_NAME"
 # --- retire the three apps Mac Daddy replaces --------------------------------
 retire() {   # $1 = app name in ~/Applications, $2 = executable, $3 = bundle id
     local app="$HOME/Applications/$1.app" bin="$HOME/Applications/$1.app/Contents/MacOS/$2"
-    [ -e "$app" ] || return 0
+    [ -e "$app" ] || [ -L "$app" ] || return 0
     osascript -e "tell application id \"$3\" to quit" >/dev/null 2>&1 || true
     sleep 1; pkill -f "$1.app/Contents/MacOS/$2" 2>/dev/null || true
-    [ -x "$bin" ] && "$bin" --login off >/dev/null 2>&1 || true
-    rm -f "$app"
-    echo "Retired $1 (quit, login item off, ~/Applications link removed)."
+    if [ -x "$bin" ]; then "$bin" --login off >/dev/null 2>&1 || true
+    else echo "Warning: $1's binary is gone, so its login item could not be turned off (System Settings > General > Login Items)." >&2; fi
+    if [ -L "$app" ]; then rm -f "$app"; echo "Retired $1 (quit, login item off, ~/Applications link removed)."
+    else echo "Warning: $app is a real app bundle, not a link; quit it and left it in place (delete it by hand)." >&2; fi
 }
 retire "Media Tracking Killer" MediaTrackingKiller com.nicholaspsmith.MediaTrackingKiller
 retire "Download Recycler" DownloadRecycler com.nicholaspsmith.DownloadRecycler
@@ -41,7 +42,13 @@ if [ -f "$HOME/Library/LaunchAgents/$REAPER.plist" ]; then
     rm -f "$HOME/Library/LaunchAgents/$REAPER.plist"; echo "Removed the $REAPER agent."
 fi
 if [ -f "$HOME/.local/bin/godot-headless-reaper" ]; then
-    mv "$HOME/.local/bin/godot-headless-reaper" "$HOME/.Trash/"; echo "Moved godot-headless-reaper to the Trash."
+    reaper_bin="$HOME/.local/bin/godot-headless-reaper"
+    if osascript -e "tell application \"Finder\" to delete POSIX file \"$reaper_bin\"" >/dev/null 2>&1 \
+        || { mkdir -p "$HOME/.Trash" 2>/dev/null && mv "$reaper_bin" "$HOME/.Trash/" 2>/dev/null; }; then
+        echo "Moved godot-headless-reaper to the Trash."
+    else
+        echo "Could not move godot-headless-reaper to the Trash — delete it by hand: $reaper_bin" >&2
+    fi
 fi
 
 # --- Start at Login (ask; never unasked) --------------------------------------
