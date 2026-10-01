@@ -72,8 +72,10 @@ final class App: NSObject, NSApplicationDelegate {
     /// Kept as a harmless backstop in case an old install still has it loaded.
     private func retireReaperAgent() {
         let label = "com.nicholassmith.godot-headless-reaper"
-        let out = Shell.run("/bin/launchctl", ["bootout", "gui/\(getuid())/\(label)"])
-        log.notice("reaper agent bootout: \(out == nil ? "not loaded" : "unloaded", privacy: .public)")
+        DispatchQueue.global(qos: .utility).async {
+            let out = Shell.run("/bin/launchctl", ["bootout", "gui/\(getuid())/\(label)"])
+            log.notice("reaper agent bootout: \(out == nil ? "not loaded" : "unloaded", privacy: .public)")
+        }
     }
 
     private func flourish(_ f: Flourish) {

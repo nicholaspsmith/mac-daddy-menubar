@@ -15,7 +15,11 @@ public final class LostSouls {
     public struct Soul: Equatable {
         public let pid: Int
         public let comm: String
+        /// The executable's real path (proc_pidpath), or `comm` when unknown.
+        public let path: String
         public let name: String
+        /// When the process started: its identity, with `pid`.
+        public let start: Date
         public let meanCPU: Double
         /// Whole minutes of samples behind `meanCPU` (orphaned the whole time).
         public let minutes: Int
@@ -23,6 +27,20 @@ public final class LostSouls {
         public let qualifiedSince: Date
         /// True only the first time this process qualifies (notify once).
         public let isNew: Bool
+    }
+
+    /// What the app can learn about a PID beyond `ps`: the real executable
+    /// path, the exact start time, and the process macOS holds responsible
+    /// for it (`responsibility_get_pid_responsible_for_pid`) with its path.
+    public struct ProcDetail: Equatable {
+        public let path: String?
+        public let start: Date?
+        public let responsiblePID: Int?
+        public let responsiblePath: String?
+        public init(path: String?, start: Date?, responsiblePID: Int?, responsiblePath: String?) {
+            self.path = path; self.start = start
+            self.responsiblePID = responsiblePID; self.responsiblePath = responsiblePath
+        }
     }
 
     /// Command basenames that are normally orphaned and busy on purpose.
@@ -33,31 +51,59 @@ public final class LostSouls {
         "gpg-agent", "tmux", "screen", "mosh-server", "ollama", "MacDaddy",
     ]
 
+    /// XPC services, app extensions and the OS's own binaries are never lost
+    /// souls: launchd or their host app runs them as PPID 1 by design.
+    public static func isSystemOrHelper(path: String) -> Bool {
+        path.contains(".xpc/") || path.contains(".appex/")
+            || ["/System/", "/usr/libexec/", "/usr/sbin/", "/Library/Apple/"].contains { path.hasPrefix($0) }
+    }
+
+    /// `/Applications/Foo.app/` for any path inside that bundle.
+    static func bundleRoot(of path: String) -> String? {
+        path.range(of: ".app/").map { String(path[..<$0.upperBound]) }
+    }
+
     private struct Sample { let at: Date; let cpu: Double }
     private struct Track {
         let comm: String
         let start: Date
+        let exactStart: Bool
+        var detail: ProcDetail?
         var samples: [Sample] = []
         var spared = false
         var everQualified = false
         var qualifiedSince: Date?
+        var path: String { detail?.path ?? comm }
     }
 
     public let window: TimeInterval
     public let cpuThreshold: Double
+    public let sampleInterval: TimeInterval
     private var tracks: [Int: Track] = [:]
 
-    public init(window: TimeInterval = 600, cpuThreshold: Double = 50) {
+    public init(window: TimeInterval = 600, cpuThreshold: Double = 50, sampleInterval: TimeInterval = 30) {
         self.window = window
         self.cpuThreshold = cpuThreshold
+        self.sampleInterval = sampleInterval
     }
 
     public var trackedPIDs: [Int] { tracks.keys.sorted() }
 
-    /// Adds one snapshot. Only orphans are tracked; a PID that is gone, no
-    /// longer orphaned, or now a different process (other comm or start time)
-    /// is forgotten, and with it any Spare.
-    public func record(snapshot: String, at now: Date) {
+    /// Whether this exact process (pid + start time) is still being tracked.
+    public func contains(pid: Int, start: Date) -> Bool {
+        guard let t = tracks[pid] else { return false }
+        return abs(t.start.timeIntervalSince(start)) < 1
+    }
+
+    /// Samples needed before a soul can qualify: 80 % of a fully covered window.
+    var minSamples: Int { max(2, Int((window / sampleInterval * 0.8).rounded(.up))) }
+
+    /// Adds one snapshot taken at `now` (when `ps` returned). Only orphans
+    /// outside the system/helper paths are tracked; a PID that is gone, no
+    /// longer orphaned, or now a different process (other start time) is
+    /// forgotten, and with it any Spare. A track whose last sample is older
+    /// than 3 sample intervals (sleep, or the duty was off) starts over.
+    public func record(snapshot: String, at now: Date, detail: (Int) -> ProcDetail? = { _ in nil }) {
         var seen = Set<Int>()
         for line in snapshot.split(separator: "\n") {
             let f = line.split(maxSplits: 4, omittingEmptySubsequences: true, whereSeparator: { $0 == " " || $0 == "\t" })
@@ -65,13 +111,21 @@ public final class LostSouls {
                   let age = Self.elapsedSeconds(String(f[3])), ppid == 1 else { continue }
             let comm = String(f[4]).trimmingCharacters(in: .whitespaces)
             guard !comm.isEmpty else { continue }
-            let start = now.addingTimeInterval(-Double(age))
+            let d = detail(pid)
+            guard !Self.isSystemOrHelper(path: d?.path ?? comm) else { continue }
+            let exact = d?.start != nil
+            let start = d?.start ?? now.addingTimeInterval(-Double(age))
             seen.insert(pid)
-            if let t = tracks[pid], t.comm == comm, abs(t.start.timeIntervalSince(start)) <= 3 {
-                // same process
+            if let t = tracks[pid], t.comm == comm,
+               abs(t.start.timeIntervalSince(start)) <= (exact && t.exactStart ? 1 : 3) {
+                if let last = t.samples.last, now.timeIntervalSince(last.at) > 3 * sampleInterval {
+                    tracks[pid]!.samples = []
+                    tracks[pid]!.qualifiedSince = nil
+                }
             } else {
-                tracks[pid] = Track(comm: comm, start: start)
+                tracks[pid] = Track(comm: comm, start: start, exactStart: exact)
             }
+            if d != nil { tracks[pid]!.detail = d }
             tracks[pid]!.samples.append(Sample(at: now, cpu: cpu))
             // Keep just enough history to span the window.
             var s = tracks[pid]!.samples
@@ -81,31 +135,38 @@ public final class LostSouls {
         tracks = tracks.filter { seen.contains($0.key) }
     }
 
-    /// The souls that qualify now, by PID. `isApp(pid, comm)` is asked only for
-    /// executables inside an app bundle; return true for a real (regular or
-    /// accessory) app, which is never a lost soul.
-    public func qualifying(now: Date, allowlist: Set<String>, launchdPIDs: Set<Int>,
-                           isApp: (Int, String) -> Bool) -> [Soul] {
+    /// The souls that qualify now, by PID. `launchdJobs` maps the PIDs in
+    /// `launchctl list` to their labels; `isApp(pid)` says whether a PID is a
+    /// regular or accessory app. Excluded: allowlisted names, launchd jobs,
+    /// apps (an executable in an `.app` bundle that is a running app), and
+    /// processes macOS holds a launchd daemon/agent responsible for, or the
+    /// app whose bundle they live in. A terminal being responsible does not
+    /// count: that is how every orphan started from a shell looks.
+    public func qualifying(now: Date, allowlist: Set<String>, launchdJobs: [Int: String],
+                           isApp: (Int) -> Bool) -> [Soul] {
         var out: [Soul] = []
         for pid in tracks.keys.sorted() {
             guard var t = tracks[pid] else { continue }
-            let name = displayName(t.comm)
+            let path = t.path
+            let name = displayName(path)
             var ok = false
             var mean = 0.0
             var span: TimeInterval = 0
             if let first = t.samples.first, let last = t.samples.last, !t.spared {
                 span = last.at.timeIntervalSince(first.at)
                 mean = t.samples.reduce(0) { $0 + $1.cpu } / Double(t.samples.count)
-                ok = span >= window && mean > cpuThreshold
+                ok = span >= window && t.samples.count >= minSamples && mean > cpuThreshold
                     && !allowlist.contains(name)
-                    && !launchdPIDs.contains(pid)
-                    && !(t.comm.contains(".app/Contents/MacOS/") && isApp(pid, t.comm))
+                    && !Self.isSystemOrHelper(path: path)
+                    && launchdJobs[pid] == nil
+                    && !(path.contains(".app/Contents/MacOS/") && isApp(pid))
+                    && !responsibleExcludes(pid: pid, path: path, detail: t.detail, launchdJobs: launchdJobs, isApp: isApp)
             }
             if ok {
                 let isNew = !t.everQualified
                 t.everQualified = true
                 if t.qualifiedSince == nil { t.qualifiedSince = now }
-                out.append(Soul(pid: pid, comm: t.comm, name: name, meanCPU: mean,
+                out.append(Soul(pid: pid, comm: t.comm, path: path, name: name, start: t.start, meanCPU: mean,
                                 minutes: Int(span / 60), qualifiedSince: t.qualifiedSince!, isNew: isNew))
             } else {
                 t.qualifiedSince = nil
@@ -115,8 +176,18 @@ public final class LostSouls {
         return out
     }
 
+    private func responsibleExcludes(pid: Int, path: String, detail: ProcDetail?,
+                                     launchdJobs: [Int: String], isApp: (Int) -> Bool) -> Bool {
+        guard let r = detail?.responsiblePID, r != pid, r > 0 else { return false }
+        if let label = launchdJobs[r], !label.hasPrefix("application.") { return true }
+        if isApp(r), let rp = detail?.responsiblePath, let root = Self.bundleRoot(of: rp), path.hasPrefix(root) { return true }
+        return false
+    }
+
     /// Leaves this process alone until it exits; a new process reusing the PID is not spared.
-    public func spare(pid: Int) { tracks[pid]?.spared = true }
+    public func spare(pid: Int, start: Date) {
+        if contains(pid: pid, start: start) { tracks[pid]?.spared = true }
+    }
 
     /// `ps` etime: `[[dd-]hh:]mm:ss`.
     public static func elapsedSeconds(_ etime: String) -> Int? {
@@ -134,10 +205,14 @@ public final class LostSouls {
         return ((days * 24 + h) * 60 + m) * 60 + s
     }
 
-    /// PIDs of running jobs in `launchctl list` output (`PID\tStatus\tLabel`, `-` when not running).
-    public static func launchdPIDs(fromLaunchctlList text: String) -> Set<Int> {
-        Set(text.split(separator: "\n").compactMap { line in
-            line.split(separator: "\t", omittingEmptySubsequences: false).first.flatMap { Int($0) }
-        })
+    /// Running jobs in `launchctl list` output (`PID\tStatus\tLabel`, `-` when not running), PID → label.
+    public static func launchdJobs(fromLaunchctlList text: String) -> [Int: String] {
+        var jobs: [Int: String] = [:]
+        for line in text.split(separator: "\n") {
+            let f = line.split(separator: "\t", omittingEmptySubsequences: false)
+            guard f.count >= 3, let pid = Int(f[0]) else { continue }
+            jobs[pid] = String(f[2])
+        }
+        return jobs
     }
 }

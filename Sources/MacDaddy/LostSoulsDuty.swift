@@ -10,29 +10,68 @@ import StatusItemKit
 
 private let log = Logger(subsystem: "com.nicholaspsmith.MacDaddy", category: "lostSouls")
 
+/// Private but stable libsystem call (libquarantine): the PID macOS holds
+/// responsible for `pid` — the app or daemon that launched it, through XPC too.
+@_silgen_name("responsibility_get_pid_responsible_for_pid")
+private func responsibility_get_pid_responsible_for_pid(_ pid: pid_t) -> pid_t
+
+/// The BSD info of a live process, or nil when it is gone.
+private func bsdInfo(_ pid: pid_t) -> proc_bsdinfo? {
+    var info = proc_bsdinfo()
+    let size = Int32(MemoryLayout<proc_bsdinfo>.size)
+    return proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, size) == size ? info : nil
+}
+
+private func startDate(_ info: proc_bsdinfo) -> Date {
+    Date(timeIntervalSince1970: Double(info.pbi_start_tvsec) + Double(info.pbi_start_tvusec) / 1_000_000)
+}
+
+private func procDetail(_ pid: Int) -> LostSouls.ProcDetail {
+    let p = pid_t(pid)
+    let r = responsibility_get_pid_responsible_for_pid(p)
+    return LostSouls.ProcDetail(path: executablePath(of: p), start: bsdInfo(p).map(startDate),
+                                responsiblePID: r > 0 ? Int(r) : nil,
+                                responsiblePath: r > 0 && r != p ? executablePath(of: r) : nil)
+}
+
 /// Finds your own orphaned processes that have burned CPU for ten minutes and
-/// offers to end them. Never kills on its own unless Banish automatically is on.
+/// offers to end them. Never kills on its own unless Banish Automatically is on.
 /// Replaced the Godot-only reaper.
 final class LostSoulsDuty: NSObject, Duty {
     var onSweep: ((Flourish) -> Void)?
     var onChange: (() -> Void)?
 
+    private enum EndResult { case ended, gone, changed, denied }
+
     private let defaults = UserDefaults.standard
     private let notifier: Notifier
     private let sampleSeconds: TimeInterval = 30
     private let autoBanishAfter: TimeInterval = 30 * 60
-    private let souls = LostSouls()
+    private let menuLimit = 8
+    private var souls = LostSouls()
     private let queue = DispatchQueue(label: "macdaddy.lostsouls")
     private var inFlight = false
+    private var generation = 0
     private var lastSample = Date.distantPast
     private var lastError: String?
+    /// The soul a ⚠ is about; the line clears once that process is gone.
+    private var errorSoul: (pid: Int, start: Date)?
+    private var banished = Set<String>()
     private(set) var current: [LostSouls.Soul] = []
 
     init(notifier: Notifier) { self.notifier = notifier }
 
     var enabled: Bool {
         get { defaults.object(forKey: "lostSouls.enabled") as? Bool ?? true }
-        set { defaults.set(newValue, forKey: "lostSouls.enabled"); if !newValue { current = [] }; onChange?() }
+        set {
+            defaults.set(newValue, forKey: "lostSouls.enabled")
+            // Off and on again starts from nothing: no stale samples, no stale ⚠.
+            souls = LostSouls(sampleInterval: sampleSeconds)
+            generation += 1
+            current = []; banished = []
+            clearError()
+            onChange?()
+        }
     }
     var autoBanish: Bool {
         get { defaults.object(forKey: "lostSouls.autoBanish") as? Bool ?? false }
@@ -44,69 +83,104 @@ final class LostSoulsDuty: NSObject, Duty {
         lastSample = now
         inFlight = true
         let uid = String(getuid())
+        let gen = generation
         queue.async { [weak self] in
             let ps = Shell.run("/bin/ps", ["-U", uid, "-o", "pid=,ppid=,%cpu=,etime=,comm=", "-ww"])
+            let at = Date()   // when ps returned, not when the tick fired
             let jobs = Shell.run("/bin/launchctl", ["list"])
-            DispatchQueue.main.async { self?.apply(ps: ps, launchctl: jobs, at: now) }
+            var details: [Int: LostSouls.ProcDetail] = [:]
+            for line in (ps ?? "").split(separator: "\n") {
+                let f = line.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
+                if f.count == 3, f[1] == "1", let pid = Int(f[0]) { details[pid] = procDetail(pid) }
+            }
+            DispatchQueue.main.async { self?.apply(ps: ps, launchctl: jobs, details: details, at: at, generation: gen) }
         }
     }
 
-    private func apply(ps: String?, launchctl: String?, at now: Date) {
+    private func apply(ps: String?, launchctl: String?, details: [Int: LostSouls.ProcDetail], at now: Date, generation gen: Int) {
         inFlight = false
-        guard enabled else { return }
-        guard let ps else { lastError = "Couldn't list processes"; return }
-        if lastError == "Couldn't list processes" { lastError = nil }
-        souls.record(snapshot: ps, at: now)
+        guard enabled, gen == generation else { return }
+        guard let ps else { lastError = "Couldn't list processes"; errorSoul = nil; return }
+        if lastError == "Couldn't list processes" { clearError() }
+        souls.record(snapshot: ps, at: now, detail: { details[$0] })
+        if let e = errorSoul, !souls.contains(pid: e.pid, start: e.start) { clearError() }
         // Without launchctl's list, nothing can be ruled out as a launchd job: skip this round.
         guard let launchctl else { return }
         current = souls.qualifying(now: now, allowlist: LostSouls.defaultAllowlist,
-                                   launchdPIDs: LostSouls.launchdPIDs(fromLaunchctlList: launchctl),
+                                   launchdJobs: LostSouls.launchdJobs(fromLaunchctlList: launchctl),
                                    isApp: Self.isRealApp)
-        for s in current where s.isNew {
+        let fresh = current.filter(\.isNew)
+        for s in fresh {
             log.notice("lost soul: \(s.name, privacy: .public) [\(s.pid)] \(Int(s.meanCPU))% for \(s.minutes) min")
+        }
+        if fresh.count == 1, let s = fresh.first {
             notifier.post(title: "Lost soul",
-                          body: "\(s.name) (pid \(s.pid)) has been burning \(Int(s.meanCPU.rounded()))% CPU for \(s.minutes) min with no parent")
+                          body: "\(s.name) (pid \(s.pid)) has been burning \(Self.pct(s))% CPU for \(s.minutes) min with no parent")
+        } else if fresh.count > 1 {
+            notifier.post(title: "\(fresh.count) lost souls",
+                          body: "Orphaned and burning CPU: " + fresh.map { "\($0.name) (\(Self.pct($0))%)" }.joined(separator: ", "))
         }
         if autoBanish {
+            var ended: [LostSouls.Soul] = []
             for s in current where now.timeIntervalSince(s.qualifiedSince) >= autoBanishAfter {
-                if end(s) {
-                    notifier.post(title: "Lost soul banished", body: "Ended \(s.name) (pid \(s.pid)) after 30 min at \(Int(s.meanCPU.rounded()))% CPU")
-                }
+                guard banished.insert(Self.key(s)).inserted else { continue }   // once per process
+                if end(s) == .ended { ended.append(s) }
+            }
+            if ended.count == 1, let s = ended.first {
+                notifier.post(title: "Lost soul banished", body: "Ended \(s.name) (pid \(s.pid)) after 30 min at \(Self.pct(s))% CPU")
+            } else if ended.count > 1 {
+                notifier.post(title: "\(ended.count) lost souls banished",
+                              body: "Ended " + ended.map { "\($0.name) (pid \($0.pid))" }.joined(separator: ", "))
             }
         }
     }
 
-    /// A regular or accessory app is never a lost soul; a headless binary run
-    /// from inside a bundle (Godot --headless) has no NSRunningApplication.
-    private static func isRealApp(pid: Int, comm: String) -> Bool {
+    private static func pct(_ s: LostSouls.Soul) -> Int { Int(s.meanCPU.rounded()) }
+    private static func key(_ s: LostSouls.Soul) -> String { "\(s.pid)@\(s.start.timeIntervalSince1970)" }
+
+    /// A regular or accessory app; a headless binary run from inside a bundle
+    /// (Godot --headless) has no NSRunningApplication.
+    private static func isRealApp(pid: Int) -> Bool {
         guard let app = NSRunningApplication(processIdentifier: pid_t(pid)) else { return false }
         return app.activationPolicy == .regular || app.activationPolicy == .accessory
     }
 
-    private static func stillSame(_ s: LostSouls.Soul) -> Bool {
-        guard let path = executablePath(of: pid_t(s.pid)) else { return false }
-        return displayName(path) == displayName(s.comm)
+    /// Is `pid` still this exact soul: same start time, still orphaned, still yours?
+    /// nil when no process has that PID any more.
+    private static func verify(_ s: LostSouls.Soul) -> Bool? {
+        guard let info = bsdInfo(pid_t(s.pid)) else { return nil }
+        return abs(startDate(info).timeIntervalSince(s.start)) < 1 && info.pbi_ppid == 1 && info.pbi_uid == getuid()
     }
 
+    private func clearError() { lastError = nil; errorSoul = nil }
+    private func setError(_ text: String, _ s: LostSouls.Soul) { lastError = text; errorSoul = (s.pid, s.start) }
+
     /// SIGTERM, then SIGKILL after 5 s if the same process is still alive.
-    /// Returns true when the signal was delivered.
     @discardableResult
-    private func end(_ s: LostSouls.Soul) -> Bool {
+    private func end(_ s: LostSouls.Soul) -> EndResult {
         current.removeAll { $0.pid == s.pid }
-        guard Self.stillSame(s) else { return false }   // gone or reused: nothing to do
+        switch Self.verify(s) {
+        case nil: return .gone
+        case false?:
+            setError("\(s.name) changed — not ended", s)
+            return .changed
+        case true?: break
+        }
         let pid = pid_t(s.pid)
         guard kill(pid, SIGTERM) == 0 else {
-            if errno == EPERM { lastError = "Not allowed to end \(s.name) [\(s.pid)]" }
-            return false   // ESRCH: already gone — not an error
+            if errno == EPERM { setError("Not allowed to end \(s.name) [\(s.pid)]", s); return .denied }
+            return .gone   // ESRCH: already gone — not an error
         }
+        clearError()
         log.notice("ended lost soul \(s.name, privacy: .public) [\(s.pid)]")
         onSweep?(.hatTip)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-            guard Self.stillSame(s), kill(pid, 0) == 0 else { return }
+        let gen = generation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+            guard Self.verify(s) == true else { return }   // exited, or the PID is someone else's now
             if kill(pid, SIGKILL) == 0 { log.notice("SIGKILLed lost soul [\(s.pid)]") }
-            else if errno == EPERM { self.lastError = "Not allowed to end \(s.name) [\(s.pid)]" }
+            else if errno == EPERM, let self, gen == self.generation { self.setError("Not allowed to end \(s.name) [\(s.pid)]", s) }
         }
-        return true
+        return .ended
     }
 
     func addMenuItems(to menu: NSMenu) {
@@ -119,32 +193,43 @@ final class LostSoulsDuty: NSObject, Duty {
             none.isEnabled = false
             menu.addItem(indented(none))
         }
-        for s in current {
-            let row = NSMenuItem(title: "\(s.name) [\(s.pid)]  —  \(Int(s.meanCPU.rounded()))% for \(s.minutes) min",
+        let hottest = current.sorted { $0.meanCPU > $1.meanCPU }
+        for s in hottest.prefix(menuLimit) {
+            let row = NSMenuItem(title: "\(s.name) [\(s.pid)]  —  \(Self.pct(s))% for \(s.minutes) min",
                                  action: nil, keyEquivalent: "")
             let sub = NSMenu()
             let end = NSMenuItem(title: "End", action: #selector(endSoul(_:)), keyEquivalent: "")
-            end.target = self; end.representedObject = s.pid
+            end.target = self; end.representedObject = Self.key(s)
             let spare = NSMenuItem(title: "Spare", action: #selector(spareSoul(_:)), keyEquivalent: "")
-            spare.target = self; spare.representedObject = s.pid
+            spare.target = self; spare.representedObject = Self.key(s)
             sub.addItem(end); sub.addItem(spare)
             row.submenu = sub
             menu.addItem(indented(row))
+        }
+        if hottest.count > menuLimit {
+            let more = NSMenuItem(title: "and \(hottest.count - menuLimit) more…", action: nil, keyEquivalent: "")
+            more.isEnabled = false
+            menu.addItem(indented(more))
         }
         let auto = NSMenuItem(title: "Banish Automatically", action: #selector(toggleAuto), keyEquivalent: "")
         auto.target = self; auto.state = autoBanish ? .on : .off
         menu.addItem(indented(auto))
     }
 
+    private func soul(for sender: NSMenuItem) -> LostSouls.Soul? {
+        guard let k = sender.representedObject as? String else { return nil }
+        return current.first { Self.key($0) == k }
+    }
+
     @objc private func toggleEnabled() { enabled.toggle() }
     @objc private func toggleAuto() { autoBanish.toggle() }
     @objc private func endSoul(_ sender: NSMenuItem) {
-        guard let pid = sender.representedObject as? Int, let s = current.first(where: { $0.pid == pid }) else { return }
+        guard let s = soul(for: sender) else { return }
         end(s)
     }
     @objc private func spareSoul(_ sender: NSMenuItem) {
-        guard let pid = sender.representedObject as? Int else { return }
-        souls.spare(pid: pid)
-        current.removeAll { $0.pid == pid }
+        guard let s = soul(for: sender) else { return }
+        souls.spare(pid: s.pid, start: s.start)
+        current.removeAll { $0.pid == s.pid }
     }
 }

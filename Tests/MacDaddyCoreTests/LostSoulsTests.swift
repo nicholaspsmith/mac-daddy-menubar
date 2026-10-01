@@ -21,14 +21,15 @@ final class LostSoulsTests: XCTestCase {
     }
 
     /// Samples every 30 s from 0 through `minutes` minutes.
-    func feed(_ souls: LostSouls, minutes: Int, _ lines: (Int) -> [String]) {
-        for at in stride(from: 0, through: minutes * 60, by: 30) {
-            souls.record(snapshot: lines(at).joined(separator: "\n"), at: t0.addingTimeInterval(Double(at)))
+    func feed(_ souls: LostSouls, minutes: Int, from: Int = 0, every: Int = 30,
+              detail: @escaping (Int) -> LostSouls.ProcDetail? = { _ in nil }, _ lines: (Int) -> [String]) {
+        for at in stride(from: from, through: from + minutes * 60, by: every) {
+            souls.record(snapshot: lines(at).joined(separator: "\n"), at: t0.addingTimeInterval(Double(at)), detail: detail)
         }
     }
 
-    func qualifying(_ s: LostSouls, at: Int, launchd: Set<Int> = [], isApp: @escaping (Int, String) -> Bool = { _, _ in false }) -> [LostSouls.Soul] {
-        s.qualifying(now: t0.addingTimeInterval(Double(at)), allowlist: allow, launchdPIDs: launchd, isApp: isApp)
+    func qualifying(_ s: LostSouls, at: Int, launchd: [Int: String] = [:], isApp: @escaping (Int) -> Bool = { _ in false }) -> [LostSouls.Soul] {
+        s.qualifying(now: t0.addingTimeInterval(Double(at)), allowlist: allow, launchdJobs: launchd, isApp: isApp)
     }
 
     func testOrphanedHotAndLongQualifies() {
@@ -78,14 +79,18 @@ final class LostSoulsTests: XCTestCase {
             line(24, cpu: 99, at: at, comm: "/Applications/Godot.app/Contents/MacOS/Godot"),
             line(25, cpu: 99, at: at, comm: "-zsh"),
         ] }
-        let q = qualifying(s, at: 600, launchd: [22], isApp: { pid, _ in pid == 23 })
+        let q = qualifying(s, at: 600, launchd: [22: "com.example.somejob"], isApp: { $0 == 23 })
         XCTAssertEqual(q.map(\.pid), [24, 25])   // headless Godot has no app entry, so it counts
     }
 
     func testSparedUntilItExitsAndAReusedPIDIsNotSpared() {
         let s = LostSouls()
         feed(s, minutes: 10) { [line(30, cpu: 99, at: $0)] }
-        s.spare(pid: 30)
+        let soul = qualifying(s, at: 600)[0]
+        s.spare(pid: 31, start: soul.start)   // wrong pid: nothing
+        s.spare(pid: 30, start: soul.start.addingTimeInterval(-60))   // wrong start: nothing
+        XCTAssertEqual(qualifying(s, at: 600).map(\.pid), [30])
+        s.spare(pid: 30, start: soul.start)
         XCTAssertTrue(qualifying(s, at: 600).isEmpty)
         s.record(snapshot: line(30, cpu: 99, at: 630), at: t0.addingTimeInterval(630))
         XCTAssertTrue(qualifying(s, at: 630).isEmpty)
@@ -142,6 +147,84 @@ final class LostSoulsTests: XCTestCase {
 
     func testLaunchctlListPIDs() {
         let text = "PID\tStatus\tLabel\n-\t0\tcom.apple.idle\n1093\t0\tcom.apple.progressd\n77\t-9\tcom.example.job\n\nbad line\n"
-        XCTAssertEqual(LostSouls.launchdPIDs(fromLaunchctlList: text), [1093, 77])
+        XCTAssertEqual(LostSouls.launchdJobs(fromLaunchctlList: text), [1093: "com.apple.progressd", 77: "com.example.job"])
+    }
+
+    // MARK: - 1.1.1: system helpers, responsibility, gaps, identity
+
+    let webContent = "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+    let vm = "/System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc/Contents/MacOS/com.apple.Virtualization.VirtualMachine"
+    let appex = "/Applications/Notes Thing.app/Contents/PlugIns/Widget.appex/Contents/MacOS/Widget"
+    let thirdPartyXPC = "/Applications/Some Editor.app/Contents/XPCServices/Renderer.xpc/Contents/MacOS/Renderer"
+
+    func testXPCServicesExtensionsAndSystemBinariesNeverQualify() {
+        let s = LostSouls()
+        let paths = [50: webContent, 51: vm, 52: appex, 53: thirdPartyXPC, 54: "/usr/libexec/busyd",
+                     55: "/usr/sbin/spind", 56: "/Library/Apple/System/Library/Thing", 57: "/opt/tools/runaway"]
+        // ps comm is the short name; the real path comes from proc_pidpath.
+        feed(s, minutes: 10, detail: { pid in LostSouls.ProcDetail(path: paths[pid], start: nil, responsiblePID: nil, responsiblePath: nil) }) { at in
+            paths.keys.sorted().map { self.line($0, cpu: 99, at: at, comm: "short\($0)") }
+        }
+        XCTAssertEqual(qualifying(s, at: 600).map(\.pid), [57])
+        XCTAssertEqual(qualifying(s, at: 600).first?.name, "runaway")   // name from the real path
+    }
+
+    func testResponsibleDaemonOrOwningAppExcludesButATerminalDoesNot() {
+        let s = LostSouls()
+        let d: [Int: LostSouls.ProcDetail] = [
+            // launched from iTerm (an app, and an application.* launchd job): still a lost soul
+            60: .init(path: "/usr/bin/yes", start: nil, responsiblePID: 900, responsiblePath: "/Applications/iTerm.app/Contents/MacOS/iTerm2"),
+            // a helper inside the app that is responsible for it: the app's business
+            61: .init(path: "/Applications/Foo.app/Contents/Helpers/foo-worker", start: nil, responsiblePID: 901, responsiblePath: "/Applications/Foo.app/Contents/MacOS/Foo"),
+            // spawned on behalf of a launchd daemon/agent
+            62: .init(path: "/opt/tools/indexer", start: nil, responsiblePID: 902, responsiblePath: "/opt/tools/indexd"),
+            // responsible for itself
+            63: .init(path: "/opt/tools/runaway", start: nil, responsiblePID: 63, responsiblePath: "/opt/tools/runaway"),
+        ]
+        feed(s, minutes: 10, detail: { d[$0] }) { at in [60, 61, 62, 63].map { self.line($0, cpu: 99, at: at) } }
+        let jobs = [900: "application.com.googlecode.iterm2.1.2", 901: "application.com.example.Foo.3.4", 902: "com.example.indexd"]
+        XCTAssertEqual(qualifying(s, at: 600, launchd: jobs, isApp: { $0 == 900 || $0 == 901 }).map(\.pid), [60, 63])
+    }
+
+    func testASleepGapDoesNotCountAsCoveredTime() {
+        let s = LostSouls()
+        feed(s, minutes: 2) { [line(70, cpu: 99, at: $0)] }
+        // Lid closed for two hours, then one sample: two hours of "span", but not covered.
+        s.record(snapshot: line(70, cpu: 99, at: 7320), at: t0.addingTimeInterval(7320))
+        XCTAssertTrue(qualifying(s, at: 7320).isEmpty)
+        // Ten more covered minutes after the gap do qualify, for 10 min, not 122.
+        feed(s, minutes: 10, from: 7350) { [line(70, cpu: 99, at: $0)] }
+        XCTAssertEqual(qualifying(s, at: 7950).first?.minutes, 10)
+    }
+
+    func testAShortGapRestartsTheWindowEvenWithEnoughSamples() {
+        let s = LostSouls()
+        feed(s, minutes: 9) { [line(73, cpu: 99, at: $0)] }   // 0…540, 19 samples
+        // 150 s without a sample (> 3 intervals): what came before no longer counts.
+        s.record(snapshot: line(73, cpu: 99, at: 690), at: t0.addingTimeInterval(690))
+        XCTAssertTrue(qualifying(s, at: 690).isEmpty)
+    }
+
+    func testSparseSamplesDoNotQualify() {
+        let s = LostSouls()
+        // Every 75 s (under the 3x gap reset) spans ten minutes with only 9 samples, not 16.
+        feed(s, minutes: 10, every: 75) { [line(71, cpu: 99, at: $0)] }
+        XCTAssertTrue(qualifying(s, at: 600).isEmpty)
+    }
+
+    func testExactStartTimeIsTheIdentity() {
+        let s = LostSouls()
+        let start = t0.addingTimeInterval(-3600.25)
+        var current = start
+        feed(s, minutes: 10, detail: { _ in .init(path: "/opt/tools/runaway", start: current, responsiblePID: nil, responsiblePath: nil) }) { [line(72, cpu: 99, at: $0)] }
+        let soul = qualifying(s, at: 600).first
+        XCTAssertEqual(soul?.start, start)
+        XCTAssertEqual(soul?.path, "/opt/tools/runaway")
+        current = start.addingTimeInterval(5)   // same pid and name, different process
+        s.record(snapshot: line(72, cpu: 99, at: 630), at: t0.addingTimeInterval(630),
+                 detail: { _ in .init(path: "/opt/tools/runaway", start: current, responsiblePID: nil, responsiblePath: nil) })
+        XCTAssertTrue(qualifying(s, at: 630).isEmpty)
+        XCTAssertTrue(s.contains(pid: 72, start: current))
+        XCTAssertFalse(s.contains(pid: 72, start: start))
     }
 }
