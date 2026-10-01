@@ -8,6 +8,12 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.1.0] - 2026-10-01
+
+- New **Lost Souls** duty: spots any of your own processes that has been orphaned (no parent) and burning more than 50% CPU for 10 minutes, notifies you once, and lists it in the menu with **End** and **Spare**. Apps, launchd jobs and normal background daemons are left out
+- **Banish Automatically** (off by default) ends a lost soul once it has been listed for 30 minutes, and tells you it did
+- The Godot-specific reaper is gone, replaced by this general version (a hung headless Godot run is just another lost soul); your Godot Reaper on/off setting carries over
+
 ## [1.0.2] - 2026-10-01
 
 - Zombies: "Quit <parent>" is never offered for system processes (loginwindow, WindowServer, Dock, Finder and friends) or Mac Daddy himself, asks before quitting, re-checks the process is still the same one, and shows a ⚠ line if macOS refuses
