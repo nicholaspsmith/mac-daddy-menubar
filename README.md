@@ -7,7 +7,7 @@
 Keeps your Mac in line: kills Apple's media trackers, trashes stale downloads, reaps hung headless Godot runs, and sweats when your process count climbs. Built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit).
 
-**Version 1.0.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
+**Version 1.0.1** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
@@ -28,7 +28,7 @@ Prefer a plain symbol? **menu ▸ Icon ▸ Plain symbol**.
 |---|---|
 | Processes | live count against the per-UID limit, a two-minute sparkline, crash-looping processes, Top Spawners (each opens a detail window), Zombies (Reap Now when any), Open Activity Monitor |
 | Media Tracking ▸ Enabled / Kill Now / Interval / Processes | kills Apple's media analysis daemons every 5 / 15 / 30 / 60 s; one toggle per daemon |
-| Downloads ▸ Enabled / Sweep Now / Keep Files For / Open Log | moves files older than 7 / 14 / 30 / 60 / 90 days from `~/Downloads` to the Trash (restorable, never a hard delete) |
+| Downloads ▸ Enabled / Sweep Now / Keep Files For / Open Log | checks every 30 minutes and sweeps at most once a day (once 24 h have passed since the last sweep), moving files older than 7 / 14 / 30 / 60 / 90 days from `~/Downloads` to the Trash (restorable, never a hard delete); Sweep Now runs one immediately |
 | Godot Reaper ▸ Enabled / Reap Now | reaps stuck headless Godot test processes |
 | Icon | Mac Daddy or plain symbol |
 | Start at Login | SMAppService — no launchd agent |
@@ -80,12 +80,13 @@ process's own bundle, so the command has to be the *installed* binary. A bare
 ## Uninstall
 
 ```sh
+"$HOME/Applications/Mac Daddy.app/Contents/MacOS/MacDaddy" --login off
 osascript -e 'quit app "Mac Daddy"'
 rm "$HOME/Applications/Mac Daddy.app"
 defaults delete com.nicholaspsmith.MacDaddy
 ```
 
-(Disable Start at Login from the menu first, or remove the entry under
+(Turning Start at Login off first matters: do it before removing the link. Otherwise remove the entry under
 System Settings ▸ General ▸ Login Items.)
 
 ## Why not a SwiftBar plugin?

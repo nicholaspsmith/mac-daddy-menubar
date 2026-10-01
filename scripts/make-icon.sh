@@ -9,6 +9,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 src=../widgets.nicksmith.software/art/raw/mac-daddy.png
+[ -f "$src" ] || { echo "Missing mascot: $src (clone widgets.nicksmith.software beside this repo)" >&2; exit 1; }
 set_dir="$(mktemp -d)/AppIcon.iconset"; mkdir -p "$set_dir" Resources/bundle
 for s in 16 32 128 256 512; do
   sips -z $s $s "$src" --out "$set_dir/icon_${s}x${s}.png" >/dev/null
