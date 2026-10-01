@@ -29,11 +29,11 @@ final class App: NSObject, NSApplicationDelegate {
     private lazy var processWatch = ProcessWatch(notifier: notifier)
     private let tracker = TrackerKiller()
     private lazy var downloads = DownloadSweeper(notifier: notifier)
-    private let reaper = Reaper()
+    private lazy var lostSouls = LostSoulsDuty(notifier: notifier)
     private var lastFlourish: (Flourish, Date)?
 
-    private var cleanupDuties: [Duty] { [tracker, downloads, reaper] }
-    private var allDuties: [Duty] { [processWatch, tracker, downloads, reaper] }
+    private var cleanupDuties: [Duty] { [tracker, downloads, lostSouls] }
+    private var allDuties: [Duty] { [processWatch, tracker, downloads, lostSouls] }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         migrate()
@@ -68,7 +68,8 @@ final class App: NSObject, NSApplicationDelegate {
         lines.forEach { log.notice("migration: \($0, privacy: .public)") }
     }
 
-    /// The reaper used to be a launchd agent; Mac Daddy does its job now.
+    /// The Godot reaper used to be a launchd agent; Lost Souls covers its job now.
+    /// Kept as a harmless backstop in case an old install still has it loaded.
     private func retireReaperAgent() {
         let label = "com.nicholassmith.godot-headless-reaper"
         let out = Shell.run("/bin/launchctl", ["bootout", "gui/\(getuid())/\(label)"])
@@ -85,7 +86,7 @@ final class App: NSObject, NSApplicationDelegate {
         guard let controller else { return }
         let mood = Mood.compute(
             fraction: processWatch.fraction,
-            anyCleanupEnabled: tracker.enabled || downloads.enabled || reaper.enabled,
+            anyCleanupEnabled: tracker.enabled || downloads.enabled || lostSouls.enabled,
             lastFlourish: lastFlourish, now: Date())
         switch IconStyle.current {
         case .character:
@@ -114,7 +115,7 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         tracker.addMenuItems(to: menu)
         downloads.addMenuItems(to: menu)
-        reaper.addMenuItems(to: menu)
+        lostSouls.addMenuItems(to: menu)
         menu.addItem(.separator())
 
         let icon = NSMenuItem(title: "Icon", action: nil, keyEquivalent: "")

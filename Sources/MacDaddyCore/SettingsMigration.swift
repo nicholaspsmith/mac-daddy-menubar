@@ -24,8 +24,11 @@ public final class MemoryStore: KeyValueStore {
 /// Daddy's namespaced keys, once. Never overwrites a key Mac Daddy already
 /// has; a value of the wrong type is skipped (the duty's default applies) and
 /// logged. Process Monitor had no settings worth keeping.
+///
+/// Version 2 (1.1.0): the Godot Reaper became Lost Souls, so `reaper.enabled`
+/// carries over to `lostSouls.enabled`.
 public enum SettingsMigration {
-    public static let currentVersion = 1
+    public static let currentVersion = 2
     public static let versionKey = "migration.version"
     public static let trackerDomain = "com.nicholaspsmith.MediaTrackingKiller"
     public static let downloadsDomain = "com.nicholaspsmith.DownloadRecycler"
@@ -35,7 +38,8 @@ public enum SettingsMigration {
 
     @discardableResult
     public static func run(target: KeyValueStore, tracker: KeyValueStore?, downloads: KeyValueStore?) -> [String] {
-        if (target.object(forKey: versionKey) as? Int ?? 0) >= currentVersion { return [] }
+        let version = target.object(forKey: versionKey) as? Int ?? 0
+        if version >= currentVersion { return [] }
         var log: [String] = []
 
         func copy(_ source: KeyValueStore?, _ from: String, _ to: String, _ kind: Kind) {
@@ -55,12 +59,17 @@ public enum SettingsMigration {
             }
         }
 
-        copy(tracker, "enabled", "tracker.enabled", .bool)
-        copy(tracker, "intervalSeconds", "tracker.intervalSeconds", .int)
-        for name in trackerTargets { copy(tracker, "target.\(name)", "tracker.target.\(name)", .bool) }
-        copy(downloads, "enabled", "downloads.enabled", .bool)
-        copy(downloads, "daysToKeep", "downloads.daysToKeep", .int)
-        copy(downloads, "lastSweep", "downloads.lastSweep", .date)
+        if version < 1 {
+            copy(tracker, "enabled", "tracker.enabled", .bool)
+            copy(tracker, "intervalSeconds", "tracker.intervalSeconds", .int)
+            for name in trackerTargets { copy(tracker, "target.\(name)", "tracker.target.\(name)", .bool) }
+            copy(downloads, "enabled", "downloads.enabled", .bool)
+            copy(downloads, "daysToKeep", "downloads.daysToKeep", .int)
+            copy(downloads, "lastSweep", "downloads.lastSweep", .date)
+        }
+        if version < 2 {
+            copy(target, "reaper.enabled", "lostSouls.enabled", .bool)
+        }
 
         target.set(currentVersion, forKey: versionKey)
         return log
