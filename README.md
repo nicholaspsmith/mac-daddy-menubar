@@ -4,10 +4,10 @@
 
 <p align="center">Part of the <a href="https://widgets.nicksmith.software">Menubarn</a> widget library.</p>
 
-Keeps your Mac in line: kills Apple's media trackers, trashes stale downloads, reaps hung headless Godot runs, and sweats when your process count climbs. Built on
+Keeps your Mac in line: kills Apple's media trackers, trashes stale downloads, finds orphaned processes burning CPU, and sweats when your process count climbs. Built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit).
 
-**Version 1.0.2** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
+**Version 1.1.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
@@ -16,7 +16,7 @@ Mac Daddy is the dapper mascot you see above, and he is also the app icon. His m
 - **Cool, in a purple suit** — plenty of headroom
 - **Sweating, in an amber suit** — the process count is climbing toward the per-user limit
 - **Red-hot, in a red suit** — close to the limit: popped collar, two drops of sweat
-- **Hat tip** — for two seconds after the media-tracker or Godot reaper kills something
+- **Hat tip** — for two seconds after the media-tracker killer or Lost Souls ends something
 - **Chain glint** — for two seconds after the Downloads sweep trashes files
 - **Asleep, grey, with a "z"** — every cleanup is paused
 
@@ -29,7 +29,7 @@ Prefer a plain symbol? **menu ▸ Icon ▸ Plain symbol**.
 | Processes | live count against the per-UID limit, a two-minute sparkline, crash-looping processes, Top Spawners (each opens a detail window), Zombies (when one of your own, non-system processes is holding zombies: "Quit <parent> to reap N", which asks before quitting it), Open Activity Monitor |
 | Media Tracking ▸ Enabled / Kill Now / Interval / Processes | kills Apple's media analysis daemons every 5 / 15 / 30 / 60 s; one toggle per daemon |
 | Downloads ▸ Enabled / Sweep Now / Keep Files For / Open Log | checks every 30 minutes and sweeps at most once a day (once 24 h have passed since the last sweep), moving files older than 7 / 14 / 30 / 60 / 90 days from `~/Downloads` to the Trash (restorable, never a hard delete); Sweep Now runs one immediately |
-| Godot Reaper ▸ Enabled / Reap Now | reaps stuck headless Godot test processes |
+| Lost Souls ▸ Enabled / each soul ▸ End, Spare / Banish Automatically | samples your processes every 30 s; a *lost soul* is one of yours that launchd adopted (parent PID 1) and that averaged over 50% CPU for 10 minutes — a hung headless test run, a script whose terminal closed. Apps, launchd jobs, normally orphaned daemons (cfprefsd, mds, tmux, ollama, …) and souls you Spare are left out. Mac Daddy notifies you once and lists it as `name [pid] — X% for M min`; **End** sends SIGTERM, then SIGKILL after 5 s. Nothing is ended unless you click End or turn on **Banish Automatically** (off by default), which ends a soul once it has been listed for 30 minutes |
 | Icon | Mac Daddy or plain symbol |
 | Start at Login | SMAppService — no launchd agent |
 
@@ -44,7 +44,7 @@ A failing duty shows a warning with the reason directly under its heading. Setti
 | Media Tracking Killer | quits it, turns its login item off, removes its `~/Applications` link |
 | Download Recycler | quits it, turns its login item off, removes its `~/Applications` link |
 | Process Monitor | quits it, turns its login item off, removes its `~/Applications` link |
-| godot-headless-reaper (launchd agent) | boots it out, removes its plist, moves its script to the Trash |
+| godot-headless-reaper (launchd agent) | boots it out, removes its plist, moves its script to the Trash (Lost Souls does its job, for any program) |
 
 ## Requirements
 
@@ -106,7 +106,7 @@ colour, and cooperative hiding so no icon strands another.
 | [Apollo Monitor](https://github.com/nicholaspsmith/apollo-monitor-menubar) | Apollo audio-interface monitor level, plus a mixer-process watchdog |
 | [Battery Time](https://github.com/nicholaspsmith/battery-time-menubar) | Time remaining, power mode, and 24h usage |
 | [VPN & DNS](https://github.com/nicholaspsmith/vpn-dns-menubar) | A chameleon for Mullvad + Tailscale state, with a DNS watcher |
-| **Mac Daddy** | Process-count watch, media-tracker killer, Downloads sweeper and Godot reaper, in one app |
+| **Mac Daddy** | Process-count watch, media-tracker killer, Downloads sweeper and lost-soul finder, in one app |
 | [KeyLight](https://github.com/nicholaspsmith/keylight-menubar) | Ctrl+brightness keys remapped to keyboard backlight |
 | [MacRecorder](https://github.com/nicholaspsmith/MacRecorder) | Screen recording with system audio |
 | [Barn](https://github.com/nicholaspsmith/menubar-barn) | Sunset: macOS 26 and earlier only. Hid a block of status icons by width; on macOS 27 use System Settings ▸ Menu Bar |

@@ -15,7 +15,8 @@ a bar that already overflows past the notch:
 Plus two jobs that today live outside the suite:
 
 - **godot-headless-reaper** — launchd agent + `~/.local/bin` script that
-  SIGKILLs hung headless Godot test runs.
+  SIGKILLed hung headless Godot test runs. Since 1.1.0 its job is done by the
+  general **Lost Souls** duty (see "Lost Souls (1.1.0)" below).
 - **Zombie count** — a general "zombies: N" reading with a "Quit <parent> to reap N" action (the
   Pioneer `FwUpdateManagerd` leak that motivated it is gone, but the next
   leaker will show up here first).
@@ -52,9 +53,8 @@ SMAppService (offered by `install.sh`, never turned on unasked). Runs a
 - `SettingsMigration` — copies old defaults domains into Mac Daddy's
   (see Migration); pure over a `[String: Any]` source/target abstraction so it
   is testable without touching real defaults.
-- `ReapRule` — given `ps -Axo pid=,etime=,command=` lines, returns the PIDs
-  to kill: command contains `MacOS/Godot --headless`, elapsed ≥ threshold
-  (default 900 s). Never the editor (`-e`, no `--headless`).
+- `LostSouls` — tracks orphaned processes' CPU over a rolling window and
+  says which qualify (see "Lost Souls (1.1.0)"). Replaced `ReapRule`.
 - `ZombieCount` — parses `ps -axo stat=` output, counts states starting `Z`,
   and offers the parent with the most zombies for quitting — only one of
   your own, never PID 1, Mac Daddy itself, or a system process
@@ -74,18 +74,18 @@ reports to the app through two callbacks: `onSweep(Flourish)` and
 | `TrackerKiller` | SIGINT to `mediaanalysisd`, `mediaanalysisd-access`, `photoanalysisd` (each toggleable) | 5/15/30/60 s, default 15 | `tracker.enabled`, `tracker.intervalSeconds`, `tracker.target.<name>` |
 | `DownloadSweeper` | `FileManager.trashItem` for files older than N days in `~/Downloads`; notifies with the count; appends to `~/Library/Logs/download-recycler.log` (path kept so the audit trail stays continuous) | checks every 30 min, sweeps once 24 h have passed since `lastSweep` (as Download Recycler does today) | `downloads.enabled`, `downloads.daysToKeep` (7/14/30/60/90, default 30), `downloads.lastSweep` |
 | `ProcessWatch` | per-UID process count vs `kern.maxprocperuid`, mirroring `ps -u $USER \| wc -l` but counted with `sysctl(KERN_PROC_RUID)` so a full process table cannot blind it (a failed read at ≥ 85 % holds the last fraction); notifies once when crossing 85 % (re-arms below 80 %); zombie count; sparkline, crash-loop detection and top spawners as Process Monitor has them; detail window (moved from `ProcessDetailWindow.swift`) | 5 s | none (always on) |
-| `Reaper` | SIGKILL hung headless Godot runs per `ReapRule` | 300 s | `reaper.enabled`, `reaper.thresholdSeconds` (default 900) |
+| `LostSoulsDuty` | notify about, and on request end, lost souls per `LostSouls` | samples every 30 s | `lostSouls.enabled` (default on), `lostSouls.autoBanish` (default off) |
 
 `TrackerKiller` emits `.hatTip` on a kill that hit at least one live process;
 `DownloadSweeper` emits `.chainGlint` when it trashed at least one file;
-`Reaper` emits `.hatTip` when it killed something. `ProcessWatch` emits no
+`LostSoulsDuty` emits `.hatTip` when it ended a soul. `ProcessWatch` emits no
 flourish; it feeds the fraction.
 
 ### App (`main.swift`)
 
 Builds the status item through StatusItemKit's `StatusItemController`,
 collects duty callbacks, recomputes `Mood`, and redraws. `anyCleanupEnabled` =
-tracker or downloads or reaper enabled.
+tracker or downloads or Lost Souls enabled.
 
 ## Menu
 
@@ -109,9 +109,11 @@ Downloads
     Sweep Now
     Keep Files For ▸      7 / 14 / 30 / 60 / 90 days
     Open Log
-Godot Reaper
+Lost Souls
   ✓ Enabled
-    Reap Now
+    <name> [pid]  —  X% for M min ▸   End / Spare   (one row per soul;
+                                     "None wandering" when there are none)
+    Banish Automatically
 ────────────
 Icon ▸                    Mac Daddy / Plain symbol
 Start at Login
@@ -123,6 +125,45 @@ Headings are disabled bold items, their items indented — no submenus for the
 primary actions. A failing duty shows `⚠ <reason>` directly under its heading.
 Process Monitor's eight display modes are dropped; the count lives in the
 first row.
+
+## Lost Souls (1.1.0)
+
+Replaces the Godot-only reaper with a general duty. A **lost soul** is a
+process that is owned by you, has PPID 1 (adopted by launchd), and has
+averaged more than 50 % CPU over a rolling window of at least 10 minutes,
+unless it is:
+
+- a real app: its executable is inside `*.app/Contents/MacOS/` **and**
+  `NSRunningApplication(processIdentifier:)` reports a `.regular` or
+  `.accessory` app (headless Godot runs from `Godot.app/Contents/MacOS/Godot`
+  but has no running-application entry, so it still counts);
+- a launchd job (its PID is in `launchctl list`'s PID column);
+- on the built-in allowlist of basenames that are normally orphaned
+  (`launchd`, `loginwindow`, `WindowServer`, `cfprefsd`, `distnoted`,
+  `mdworker`, `mdworker_shared`, `mds`, `mds_stores`, `trustd`,
+  `nsurlsessiond`, `UserEventAgent`, `secd`, `coreaudiod`, `ssh-agent`,
+  `gpg-agent`, `tmux`, `screen`, `mosh-server`, `ollama`, `MacDaddy`);
+- spared by you (until it exits; a new process reusing the PID is not).
+
+**Sampling.** Every 30 s, off the main thread:
+`ps -U <uid> -o pid=,ppid=,%cpu=,etime=,comm= -ww` and `launchctl list`.
+`LostSouls` (core, unit-tested) keeps samples only for orphans, keyed by PID
+with the comm and start time (now − etime, ±3 s) as identity, so a reused PID
+starts over; it keeps just enough samples to span the window and forgets PIDs
+that exit or stop being orphans. A soul qualifies when its samples span ≥ the
+window and their mean is > 50 %.
+
+**Behaviour.** Never kills by default. The first time a soul qualifies:
+notification "`<name>` (pid N) has been burning X% CPU for M min with no
+parent". **End** re-checks the PID still runs the same executable, sends
+SIGTERM, and SIGKILL after 5 s if the same process is still alive; hat tip on
+success. EPERM shows a ⚠ line under the heading; ESRCH is not an error.
+**Banish Automatically** (off by default) ends, by the same path, any soul
+that has qualified for 30 minutes, with a notification.
+
+**Migration.** `migration.version` 2 copies `reaper.enabled` into
+`lostSouls.enabled` if set and of the right type, never overwriting. The
+launch-time `launchctl bootout` of the old reaper agent stays as a backstop.
 
 ## The icon
 
@@ -192,8 +233,10 @@ to the Trash. Their repos and builds stay on disk. Run on both Macs.
 - `swift test` on `MacDaddyCore`: ported ProcessMonitorCore tests; `Mood`
   (thresholds at exactly 0.60 and 0.85, nil fraction, asleep + redHot,
   flourish expiry at 2.0 s); `SettingsMigration` (key mapping, run-once,
-  never overwrite, partial-failure fallback); `ReapRule` (headless past
-  threshold, headless under threshold, editor never, malformed lines);
+  never overwrite, partial-failure fallback, v2 reaper → Lost Souls);
+  `LostSouls` (orphaned+hot+long qualifies; not orphaned, under 10 min,
+  mean ≤ 50, allowlisted, launchd job, app, spared → no; reused PID not
+  spared; exited PIDs pruned; malformed lines ignored);
   `ZombieCount`; `DownloadAge` (boundary day).
 - Glyph review: `render-glyphs.sh` renders every level × asleep × flourish into
   a contact sheet, checked by eye; same images feed the README and site.
