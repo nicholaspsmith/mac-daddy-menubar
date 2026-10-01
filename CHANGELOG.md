@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.2.0] - 2026-10-01
+
+- Mac Daddy's menu-bar icon is now his illustrated mascot; the hat turns amber then red as the process count climbs
+
 ## [1.1.2] - 2026-10-01
 
 - Mac Daddy keeps working if a private macOS function it uses goes away (Lost Souls then skips only its responsible-process check)

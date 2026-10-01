@@ -92,8 +92,13 @@ final class App: NSObject, NSApplicationDelegate {
             lastFlourish: lastFlourish, now: Date())
         switch IconStyle.current {
         case .character:
-            controller.setIcon(CharacterIcon.macDaddy(level: Self.level(mood.level), asleep: mood.asleep,
-                                                      flourish: mood.flourish.map(Self.flourish)))
+            let level = Self.level(mood.level), flourish = mood.flourish.map(Self.flourish)
+            // The illustrated art ships in the bundle; if it is ever missing, the code-drawn glyph stands in.
+            if let art = Self.art {
+                controller.setIcon(CharacterIcon.macDaddy(art: art, level: level, asleep: mood.asleep, flourish: flourish))
+            } else {
+                controller.setIcon(CharacterIcon.macDaddy(level: level, asleep: mood.asleep, flourish: flourish))
+            }
         case .symbol:
             let color: NSColor
             switch mood.level {
@@ -104,6 +109,8 @@ final class App: NSObject, NSApplicationDelegate {
             controller.setIcon(MeterIcon.symbol("sparkles", color: color))
         }
     }
+
+    private static let art = MacDaddyArt.load(from: .main)
 
     private static func level(_ l: MoodLevel) -> MacDaddyLevel {
         switch l { case .cool: return .cool; case .sweating: return .sweating; case .redHot: return .redHot }
