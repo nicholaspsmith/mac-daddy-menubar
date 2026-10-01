@@ -69,8 +69,8 @@ reports to the app through two callbacks: `onSweep(Flourish)` and
 | Duty | Does | Timer | Settings (namespace) |
 |---|---|---|---|
 | `TrackerKiller` | SIGINT to `mediaanalysisd`, `mediaanalysisd-access`, `photoanalysisd` (each toggleable) | 5/15/30/60 s, default 15 | `tracker.enabled`, `tracker.intervalSeconds`, `tracker.target.<name>` |
-| `DownloadSweeper` | `FileManager.trashItem` for files older than N days in `~/Downloads`; notifies with the count; appends to `~/Library/Logs/download-recycler.log` (path kept so the audit trail stays continuous) | every 30 min (as Download Recycler does today) | `downloads.enabled`, `downloads.daysToKeep` (7/14/30/60/90, default 30), `downloads.lastSweep` |
-| `ProcessWatch` | per-UID process count vs `kern.maxprocperuid`, mirroring `ps -u $USER \| wc -l`; notifies once when crossing 85 % (re-arms below 80 %); zombie count; detail window (moved from `ProcessDetailWindow.swift`) | 5 s | none (always on) |
+| `DownloadSweeper` | `FileManager.trashItem` for files older than N days in `~/Downloads`; notifies with the count; appends to `~/Library/Logs/download-recycler.log` (path kept so the audit trail stays continuous) | checks every 30 min, sweeps once 24 h have passed since `lastSweep` (as Download Recycler does today) | `downloads.enabled`, `downloads.daysToKeep` (7/14/30/60/90, default 30), `downloads.lastSweep` |
+| `ProcessWatch` | per-UID process count vs `kern.maxprocperuid`, mirroring `ps -u $USER \| wc -l`; notifies once when crossing 85 % (re-arms below 80 %); zombie count; sparkline, crash-loop detection and top spawners as Process Monitor has them; detail window (moved from `ProcessDetailWindow.swift`) | 5 s | none (always on) |
 | `Reaper` | SIGKILL hung headless Godot runs per `ReapRule` | 300 s | `reaper.enabled`, `reaper.thresholdSeconds` (default 900) |
 
 `TrackerKiller` emits `.hatTip` on a kill that hit at least one live process;
@@ -87,8 +87,12 @@ tracker or downloads or reaper enabled.
 ## Menu
 
 ```
-Processes  1234 / 2666 (46%)        → opens the detail window
+Processes  1234 / 2666 (46%)
+  ▁▂▃▅▃▂  1180→1240                 (sparkline, ~2 min)
+  ⚠ Crash-looping (N) ▸             (only when present)
+  Top Spawners ▸                    → each opens the detail window
   Zombies  0                        (Reap Now when > 0)
+  Open Activity Monitor
 ────────────
 Media Tracking
   ✓ Enabled
