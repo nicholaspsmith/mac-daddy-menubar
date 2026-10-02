@@ -31,6 +31,17 @@ final class App: NSObject, NSApplicationDelegate {
     private lazy var downloads = DownloadSweeper(notifier: notifier)
     private lazy var lostSouls = LostSoulsDuty(notifier: notifier)
     private var lastFlourish: (Flourish, Date)?
+    /// Once a minute, in his turn with the other animated mascots, he grins and
+    /// a gold gleam crosses his teeth. Progress 0...1, linear; 0 when not grinning.
+    private var minuteCue: MinuteCue!
+    private var grin: CGFloat = 0
+    private lazy var grinAnimation = IconAnimation(duration: CharacterIcon.macDaddyGrinDuration, frame: { [weak self] t in
+        self?.grin = CGFloat(t / CharacterIcon.macDaddyGrinDuration)
+        self?.redraw()
+    }, completion: { [weak self] in
+        self?.grin = 0
+        self?.redraw()
+    })
 
     private var cleanupDuties: [Duty] { [tracker, downloads, lostSouls] }
     private var allDuties: [Duty] { [processWatch, tracker, downloads, lostSouls] }
@@ -51,6 +62,11 @@ final class App: NSObject, NSApplicationDelegate {
         controller.start()
         yieldClient = YieldClient(item: controller)
         yieldClient.start()
+        minuteCue = MinuteCue { [weak self] in
+            guard IconStyle.current == .character else { return }
+            self?.grinAnimation.start()
+        }
+        minuteCue.start()
         redraw()
     }
 
@@ -95,9 +111,9 @@ final class App: NSObject, NSApplicationDelegate {
             let level = Self.level(mood.level), flourish = mood.flourish.map(Self.flourish)
             // The illustrated art ships in the bundle; if it is ever missing, the code-drawn glyph stands in.
             if let art = Self.art {
-                controller.setIcon(CharacterIcon.macDaddy(art: art, level: level, asleep: mood.asleep, flourish: flourish))
+                controller.setIcon(CharacterIcon.macDaddy(art: art, level: level, asleep: mood.asleep, flourish: flourish, grin: grin))
             } else {
-                controller.setIcon(CharacterIcon.macDaddy(level: level, asleep: mood.asleep, flourish: flourish))
+                controller.setIcon(CharacterIcon.macDaddy(level: level, asleep: mood.asleep, flourish: flourish, grin: grin))
             }
         case .symbol:
             let color: NSColor

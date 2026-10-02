@@ -8,6 +8,11 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.3.0] - 2026-10-02
+
+- feat: once a minute Menu Pimp grins, showing white teeth with a gold gleam sweeping across them, in turn with the other animated Menumon mascots
+- Mascot renamed: Mac Daddy (the app) is run by Menu Pimp, the Mac Daddy of the menu bar
+
 ## [1.2.0] - 2026-10-01
 
 - Mac Daddy's menu-bar icon is now his illustrated mascot; the hat turns amber then red as the process count climbs
