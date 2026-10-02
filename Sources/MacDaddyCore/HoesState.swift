@@ -23,10 +23,8 @@ public struct HoesState: Equatable {
         public var evidence: [Hoes.Evidence]
         public let at: Date
 
-        public var prompt: String { "Auto-kill \(name)? (≥\(threshold)% for \(minutes) min)" }
-        public var notification: String {
-            "You ended \(name) after \(observedMinutes) min at \(meanCPU)% CPU. Auto-kill it next time?"
-        }
+        public func prompt(_ t: Terms) -> String { t.suggestionPrompt(name: name, threshold: threshold, minutes: minutes) }
+        public func notification(_ t: Terms) -> String { t.suggestionNotification(name: name, minutes: observedMinutes, cpu: meanCPU) }
     }
 
     public struct Ignored: Codable, Equatable {

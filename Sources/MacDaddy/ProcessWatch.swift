@@ -111,7 +111,7 @@ final class ProcessWatch: NSObject, Duty {
             if pct >= warnPct {
                 if !lastNotifiedAtOrAbove {
                     notifier.post(title: "Process count high",
-                                  body: "\(n) of \(limit) processes (\(pct)%). Kill some before fork() starts failing.")
+                                  body: terms.processCountHigh(count: n, limit: limit, pct: pct))
                     lastNotifiedAtOrAbove = true
                 }
             } else if pct < warnPct - 5 {
@@ -126,8 +126,11 @@ final class ProcessWatch: NSObject, Duty {
         onChange?()
     }
 
+    var title: String { count.map { "Processes  \($0) / \(limit) (\($0 * 100 / max(limit, 1))%)" } ?? "Processes  —" }
+    var warning: String? { zombieError }
+
+    /// Unlike the other duties, Processes sits at the top level: it is the status.
     func addMenuItems(to menu: NSMenu) {
-        let title = count.map { "Processes  \($0) / \(limit) (\($0 * 100 / max(limit, 1))%)" } ?? "Processes  —"
         heading(title, error: zombieError).forEach(menu.addItem)
 
         let mono = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
@@ -149,7 +152,7 @@ final class ProcessWatch: NSObject, Duty {
             menu.addItem(indented(h))
         }
 
-        let spawn = NSMenuItem(title: "Top Spawners", action: nil, keyEquivalent: "")
+        let spawn = NSMenuItem(title: terms.topSpawners, action: nil, keyEquivalent: "")
         let sm = NSMenu()
         let spawners = topSpawners(latestProcs, topN: 10)
         if spawners.isEmpty { sm.addItem(NSMenuItem(title: "(none)", action: nil, keyEquivalent: "")) }
@@ -161,10 +164,12 @@ final class ProcessWatch: NSObject, Duty {
         spawn.submenu = sm
         menu.addItem(indented(spawn))
 
-        let z = NSMenuItem(title: "Zombies  \(zombies.count)", action: nil, keyEquivalent: "")
-        menu.addItem(indented(z))
+        if zombies.count > 0 {
+            let z = NSMenuItem(title: "Zombies  \(zombies.count)", action: nil, keyEquivalent: "")
+            menu.addItem(indented(z))
+        }
         if let p = zombies.quittable {
-            let q = NSMenuItem(title: "Quit \(displayName(p.comm)) [\(p.pid)] to reap \(p.zombies)", action: #selector(quitZombieParent(_:)), keyEquivalent: "")
+            let q = NSMenuItem(title: terms.reapItem(name: displayName(p.comm), pid: p.pid, zombies: p.zombies), action: #selector(quitZombieParent(_:)), keyEquivalent: "")
             q.target = self; q.representedObject = p
             q.indentationLevel = 2
             menu.addItem(q)
@@ -193,9 +198,9 @@ final class ProcessWatch: NSObject, Duty {
         guard ZombieCount.stillSameProcess(expectedComm: p.comm, currentPath: executablePath(of: pid)) else { return refresh() }
         let name = displayName(p.comm)
         let alert = NSAlert()
-        alert.messageText = "Quit \(name)?"
+        alert.messageText = terms.reapAlertTitle(name: name)
         alert.informativeText = "Its \(p.zombies) zombie process\(p.zombies == 1 ? "" : "es") will be cleaned up."
-        alert.addButton(withTitle: "Quit \(name)")
+        alert.addButton(withTitle: terms.reapAlertButton(name: name))
         alert.addButton(withTitle: "Cancel")
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn,
@@ -203,7 +208,7 @@ final class ProcessWatch: NSObject, Duty {
         if kill(pid, SIGTERM) == 0 || errno == ESRCH {   // ESRCH: already gone — not an error.
             zombieError = nil; zombieErrorPID = nil
         } else if errno == EPERM {
-            zombieError = "Not allowed to quit \(name) [\(pid)]"
+            zombieError = terms.notAllowedToQuit(name: name, pid: Int(pid))
             zombieErrorPID = p.pid
         }
         refresh()

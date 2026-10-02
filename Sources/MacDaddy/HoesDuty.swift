@@ -162,10 +162,10 @@ final class HoesDuty: NSObject, Duty {
             switch state.learn(fq, now: now) {
             case .suggested(let s):
                 lines.append("SUGGESTED auto-kill \(s.name) at ≥\(s.threshold)% for \(s.minutes) min")
-                notifier.post(title: "Hoes", body: s.notification)
+                notifier.post(title: terms.hoes, body: s.notification(terms))
             case .tightened(let rule):
                 lines.append("RULE tightened \(rule.name): \(rule.summary)")
-                notifier.post(title: "Hoes", body: "You ended \(fq.name) again, so its rule now ends it at \(rule.summary)")
+                notifier.post(title: terms.hoes, body: terms.tightenedNotification(name: fq.name, summary: rule.summary))
             case .unchanged, .skipped: break
             }
         }
@@ -196,7 +196,7 @@ final class HoesDuty: NSObject, Duty {
         guard let rule = state.rules.first(where: { $0.id == d.ruleID }), Self.verify(pid: d.pid, start: d.start) == true else { return }
         hoes.markEnded(pid: d.pid, start: d.start, byRule: true)
         guard kill(pid_t(d.pid), rule.action == .kill ? SIGKILL : SIGTERM) == 0 else {
-            if errno == EPERM { lastError = "Not allowed to end \(d.name) [\(d.pid)]" }
+            if errno == EPERM { lastError = terms.notAllowed(name: d.name, pid: d.pid) }
             return
         }
         if rule.action == .terminate { killLater(pid: d.pid, start: d.start) }
@@ -216,8 +216,9 @@ final class HoesDuty: NSObject, Duty {
                 }
             }
         }
-        notifier.post(title: "Hoes", body: isUA ? UAWatchdog.notification(label: d.name, audioRestored: restart != nil)
-                      : "Ended runaway \(d.name) (\(Int(d.meanCPU.rounded()))% for \(Int(d.seconds / 60)) min)")
+        let t = terms
+        notifier.post(title: t.hoes, body: isUA ? UAWatchdog.notification(label: d.name, audioRestored: restart != nil, terms: t)
+                      : t.ruleKill(name: d.name, cpu: Int(d.meanCPU.rounded()), minutes: Int(d.seconds / 60)))
         onSweep?(.hatTip)
     }
 
@@ -231,25 +232,32 @@ final class HoesDuty: NSObject, Duty {
 
     // MARK: - Menu
 
+    var title: String {
+        terms.hoesTitle(enabled: enabled, count: current.count, suggestions: state.suggestions.count)
+    }
+    var warning: String? { lastError }
+    var needsAttention: Bool { enabled && (!current.isEmpty || !state.suggestions.isEmpty) }
+
     func addMenuItems(to menu: NSMenu) {
-        heading("Hoes", error: lastError).forEach(menu.addItem)
+        let terms = terms
+        warningItems().forEach(menu.addItem)
         let toggle = NSMenuItem(title: "Enabled", action: #selector(toggleEnabled), keyEquivalent: "")
         toggle.target = self; toggle.state = enabled ? .on : .off
-        menu.addItem(indented(toggle))
-        if enabled && current.isEmpty { menu.addItem(indented(disabled("None on the clock"))) }
+        menu.addItem(toggle)
+        if !current.isEmpty || !state.suggestions.isEmpty { menu.addItem(.separator()) }
         let hottest = current.sorted { $0.meanCPU > $1.meanCPU }
         for h in hottest.prefix(menuLimit) {
             let row = NSMenuItem(title: "\(h.name) [\(h.pid)]  —  \(Int(h.meanCPU.rounded()))% for \(h.minutes) min",
                                  action: nil, keyEquivalent: "")
             let sub = NSMenu()
-            sub.addItem(item("End", #selector(endHoe(_:)), h.pid))
+            sub.addItem(item(terms.end, #selector(endHoe(_:)), h.pid))
             sub.addItem(item("Ignore", #selector(ignoreHoe(_:)), h.pid))
             row.submenu = sub
-            menu.addItem(indented(row))
+            menu.addItem(row)
         }
-        if hottest.count > menuLimit { menu.addItem(indented(disabled("and \(hottest.count - menuLimit) more…"))) }
+        if hottest.count > menuLimit { menu.addItem(disabled("and \(hottest.count - menuLimit) more…")) }
         for s in state.suggestions {
-            let row = NSMenuItem(title: s.prompt, action: nil, keyEquivalent: "")
+            let row = NSMenuItem(title: s.prompt(terms), action: nil, keyEquivalent: "")
             let sub = NSMenu()
             sub.addItem(item("Yes", #selector(acceptSuggestion(_:)), s.key))
             let adjust = NSMenuItem(title: "Adjust", action: nil, keyEquivalent: "")
@@ -258,11 +266,12 @@ final class HoesDuty: NSObject, Duty {
             sub.addItem(adjust)
             sub.addItem(item("No", #selector(declineSuggestion(_:)), s.key))
             row.submenu = sub
-            menu.addItem(indented(row))
+            menu.addItem(row)
         }
+        menu.addItem(.separator())
         let rules = NSMenuItem(title: "Rules", action: nil, keyEquivalent: "")
         rules.submenu = rulesMenu()
-        menu.addItem(indented(rules))
+        menu.addItem(rules)
         if !state.ignored.isEmpty {
             let ig = NSMenuItem(title: "Ignored", action: nil, keyEquivalent: "")
             let sub = NSMenu()
@@ -271,17 +280,18 @@ final class HoesDuty: NSObject, Duty {
                 sub.addItem(item(i.hidden ? i.name : "\(i.name) (not suggested)", #selector(unignore(_:)), i.key))
             }
             ig.submenu = sub
-            menu.addItem(indented(ig))
+            menu.addItem(ig)
         }
         if FileManager.default.fileExists(atPath: logURL.path) {
             let open = NSMenuItem(title: "Open Log", action: #selector(openLog), keyEquivalent: "")
             open.target = self
-            menu.addItem(indented(open))
+            menu.addItem(open)
         }
     }
 
     private func rulesMenu() -> NSMenu {
         let m = NSMenu()
+        let terms = terms
         let shown = applicableRules
         if shown.isEmpty { m.addItem(disabled("No rules yet")) }
         for r in shown {
@@ -292,7 +302,7 @@ final class HoesDuty: NSObject, Duty {
             let row = NSMenuItem(title: title, action: nil, keyEquivalent: "")
             let sub = choices(threshold: r.threshold, minutes: r.minutes, id: r.id, #selector(ruleThreshold(_:)), #selector(ruleMinutes(_:)))
             if r.restartLabel != nil {
-                let i = item("Restart After Kill", #selector(toggleRestart(_:)), r.id); i.state = r.restartAfterKill ? .on : .off
+                let i = item(terms.restartAfterKill, #selector(toggleRestart(_:)), r.id); i.state = r.restartAfterKill ? .on : .off
                 sub.addItem(i)
             }
             let front = item("Skip While In Front", #selector(toggleFront(_:)), r.id); front.state = r.skipWhenFrontmost ? .on : .off
@@ -307,7 +317,7 @@ final class HoesDuty: NSObject, Duty {
             m.addItem(.separator())
             m.addItem(disabled("UA Watchdog"))
             let text = (try? String(contentsOf: uaLogURL, encoding: .utf8)) ?? ""
-            for line in UAWatchdogLog.summary(text, now: Date()) { m.addItem(indented(disabled(line))) }
+            for line in UAWatchdogLog.summary(text, now: Date(), terms: terms) { m.addItem(indented(disabled(line))) }
         }
         return m
     }
@@ -372,12 +382,12 @@ final class HoesDuty: NSObject, Duty {
         current.removeAll { $0.pid == h.pid }
         switch Self.verify(pid: h.pid, start: h.start) {
         case nil: return
-        case false?: lastError = "\(h.name) changed — not ended"; return
+        case false?: lastError = terms.changed(name: h.name); return
         case true?: break
         }
         hoes.markEnded(pid: h.pid, start: h.start, byRule: false)
         guard kill(pid_t(h.pid), SIGTERM) == 0 else {
-            if errno == EPERM { lastError = "Not allowed to end \(h.name) [\(h.pid)]" }
+            if errno == EPERM { lastError = terms.notAllowed(name: h.name, pid: h.pid) }
             return
         }
         lastError = nil

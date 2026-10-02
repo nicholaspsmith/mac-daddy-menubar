@@ -133,8 +133,12 @@ final class UAWatchdogTests: XCTestCase {
     }
 
     func testNotification() {
-        XCTAssertEqual(UAWatchdog.notification(label: "UA Mixer Engine", audioRestored: true), "Killed runaway UA Mixer Engine — audio restored")
-        XCTAssertEqual(UAWatchdog.notification(label: "UAD Meter", audioRestored: false), "Killed runaway UAD Meter")
+        XCTAssertEqual(UAWatchdog.notification(label: "UA Mixer Engine", audioRestored: true, terms: .pimp),
+                       "Pimp slapped runaway UA Mixer Engine — audio restored")
+        XCTAssertEqual(UAWatchdog.notification(label: "UAD Meter", audioRestored: false, terms: .pimp), "Pimp slapped runaway UAD Meter")
+        XCTAssertEqual(UAWatchdog.notification(label: "UA Mixer Engine", audioRestored: true, terms: .normal),
+                       "Killed runaway UA Mixer Engine — audio restored")
+        XCTAssertEqual(UAWatchdog.notification(label: "UAD Meter", audioRestored: false, terms: .normal), "Killed runaway UAD Meter")
     }
 
     // MARK: - The old launchd agent

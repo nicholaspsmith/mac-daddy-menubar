@@ -7,7 +7,7 @@
 import AppKit
 import Foundation
 
-// Window that opens when you click a Top Spawners entry. Re-runs ps every 2s
+// Window that opens when you click a Skanky Ass Hoes (top spawners) entry. Re-runs ps every 2s
 // while open so the descendant list and elapsed times stay live; closes itself
 // once it can't find the target PID anymore (the process exited).
 final class ProcessDetailWindowController: NSWindowController, NSWindowDelegate {
@@ -20,8 +20,8 @@ final class ProcessDetailWindowController: NSWindowController, NSWindowDelegate 
     private let summaryField = NSTextField(labelWithString: "")
     private let childrenView = NSTextView()
     private let scrollView = NSScrollView()
-    private let quitButton = NSButton(title: "Quit (SIGTERM)", target: nil, action: nil)
-    private let forceQuitButton = NSButton(title: "Force Quit (SIGKILL)", target: nil, action: nil)
+    private let quitButton = NSButton(title: terms.quitButton, target: nil, action: nil)
+    private let forceQuitButton = NSButton(title: terms.forceQuitButton, target: nil, action: nil)
     private let refreshButton = NSButton(title: "Refresh", target: nil, action: nil)
     private let closeButton = NSButton(title: "Close", target: nil, action: nil)
     private let statusField = NSTextField(labelWithString: "")
@@ -210,10 +210,10 @@ final class ProcessDetailWindowController: NSWindowController, NSWindowDelegate 
 
     @objc private func forceQuitClicked() {
         let alert = NSAlert()
-        alert.messageText = "Force quit process \(pid)?"
+        alert.messageText = terms.forceQuitAlertTitle(pid: pid)
         alert.informativeText = "SIGKILL terminates immediately with no cleanup. Open files, unsaved state, and child processes may be left in inconsistent states."
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Force Quit")
+        alert.addButton(withTitle: terms.forceQuitAlertButton)
         alert.addButton(withTitle: "Cancel")
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
@@ -228,7 +228,7 @@ final class ProcessDetailWindowController: NSWindowController, NSWindowDelegate 
         } else {
             let err = String(cString: strerror(errno))
             let alert = NSAlert()
-            alert.messageText = "kill(\(pid), \(label)) failed"
+            alert.messageText = terms.signalFailed(pid: pid, signal: label)
             alert.informativeText = err
             alert.alertStyle = .warning
             alert.runModal()
