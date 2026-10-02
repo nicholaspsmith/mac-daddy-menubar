@@ -8,7 +8,7 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
-## [Unreleased]
+## [1.4.0] - 2026-10-02
 
 - New **Hoes** duty: lists third-party processes working the CPU (80% or more for 2 minutes) with **End** and **Ignore**. When you force-quit one while it's still hot, Mac Daddy suggests a rule to end it for you next time, guessing the threshold and duration from what it saw; **Yes**, **Adjust** or **No**. Force-quit it again and the rule tightens. Rules can be adjusted, paused, set to restart a launchd job, or skipped while the app is in front. macOS's own programs are never touched
 - The `ua-watchdog` launchd agent from Apollo Monitor is now three built-in Hoes rules (shown only when Universal Audio software is installed): an orphaned UA Mixer Helper at 80% is killed at once, the UA Mixer Engine at 98% for 2 minutes, anything else UA at 90% for 1 minute, and the mixer engine is kickstarted so Apollo audio comes back. The installer and Mac Daddy retire the agent, its log carries on, and if you had disabled it the rules start paused. Unlike the agent, they only run while Mac Daddy is running
