@@ -231,12 +231,22 @@ final class HoesDuty: NSObject, Duty {
 
     // MARK: - Menu
 
+    var title: String {
+        guard enabled else { return "Hoes — Off" }
+        var t = current.isEmpty ? "Hoes — none on the clock" : "Hoes — \(current.count) on the clock"
+        let n = state.suggestions.count
+        if n > 0 { t += " · \(n) suggestion\(n == 1 ? "" : "s")" }
+        return t
+    }
+    var warning: String? { lastError }
+    var needsAttention: Bool { enabled && (!current.isEmpty || !state.suggestions.isEmpty) }
+
     func addMenuItems(to menu: NSMenu) {
-        heading("Hoes", error: lastError).forEach(menu.addItem)
+        warningItems().forEach(menu.addItem)
         let toggle = NSMenuItem(title: "Enabled", action: #selector(toggleEnabled), keyEquivalent: "")
         toggle.target = self; toggle.state = enabled ? .on : .off
-        menu.addItem(indented(toggle))
-        if enabled && current.isEmpty { menu.addItem(indented(disabled("None on the clock"))) }
+        menu.addItem(toggle)
+        if !current.isEmpty || !state.suggestions.isEmpty { menu.addItem(.separator()) }
         let hottest = current.sorted { $0.meanCPU > $1.meanCPU }
         for h in hottest.prefix(menuLimit) {
             let row = NSMenuItem(title: "\(h.name) [\(h.pid)]  —  \(Int(h.meanCPU.rounded()))% for \(h.minutes) min",
@@ -245,9 +255,9 @@ final class HoesDuty: NSObject, Duty {
             sub.addItem(item("End", #selector(endHoe(_:)), h.pid))
             sub.addItem(item("Ignore", #selector(ignoreHoe(_:)), h.pid))
             row.submenu = sub
-            menu.addItem(indented(row))
+            menu.addItem(row)
         }
-        if hottest.count > menuLimit { menu.addItem(indented(disabled("and \(hottest.count - menuLimit) more…"))) }
+        if hottest.count > menuLimit { menu.addItem(disabled("and \(hottest.count - menuLimit) more…")) }
         for s in state.suggestions {
             let row = NSMenuItem(title: s.prompt, action: nil, keyEquivalent: "")
             let sub = NSMenu()
@@ -258,11 +268,12 @@ final class HoesDuty: NSObject, Duty {
             sub.addItem(adjust)
             sub.addItem(item("No", #selector(declineSuggestion(_:)), s.key))
             row.submenu = sub
-            menu.addItem(indented(row))
+            menu.addItem(row)
         }
+        menu.addItem(.separator())
         let rules = NSMenuItem(title: "Rules", action: nil, keyEquivalent: "")
         rules.submenu = rulesMenu()
-        menu.addItem(indented(rules))
+        menu.addItem(rules)
         if !state.ignored.isEmpty {
             let ig = NSMenuItem(title: "Ignored", action: nil, keyEquivalent: "")
             let sub = NSMenu()
@@ -271,12 +282,12 @@ final class HoesDuty: NSObject, Duty {
                 sub.addItem(item(i.hidden ? i.name : "\(i.name) (not suggested)", #selector(unignore(_:)), i.key))
             }
             ig.submenu = sub
-            menu.addItem(indented(ig))
+            menu.addItem(ig)
         }
         if FileManager.default.fileExists(atPath: logURL.path) {
             let open = NSMenuItem(title: "Open Log", action: #selector(openLog), keyEquivalent: "")
             open.target = self
-            menu.addItem(indented(open))
+            menu.addItem(open)
         }
     }
 

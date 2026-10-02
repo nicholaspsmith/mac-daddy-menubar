@@ -187,16 +187,19 @@ final class LostSoulsDuty: NSObject, Duty {
         return .ended
     }
 
+    var title: String {
+        guard enabled else { return "Lost Souls — Off" }
+        return current.isEmpty ? "Lost Souls — none wandering" : "Lost Souls — \(current.count) wandering"
+    }
+    var warning: String? { lastError }
+    var needsAttention: Bool { enabled && !current.isEmpty }
+
     func addMenuItems(to menu: NSMenu) {
-        heading("Lost Souls", error: lastError).forEach(menu.addItem)
+        warningItems().forEach(menu.addItem)
         let toggle = NSMenuItem(title: "Enabled", action: #selector(toggleEnabled), keyEquivalent: "")
         toggle.target = self; toggle.state = enabled ? .on : .off
-        menu.addItem(indented(toggle))
-        if enabled && current.isEmpty {
-            let none = NSMenuItem(title: "None wandering", action: nil, keyEquivalent: "")
-            none.isEnabled = false
-            menu.addItem(indented(none))
-        }
+        menu.addItem(toggle)
+        if !current.isEmpty { menu.addItem(.separator()) }
         let hottest = current.sorted { $0.meanCPU > $1.meanCPU }
         for s in hottest.prefix(menuLimit) {
             let row = NSMenuItem(title: "\(s.name) [\(s.pid)]  —  \(Self.pct(s))% for \(s.minutes) min",
@@ -208,16 +211,17 @@ final class LostSoulsDuty: NSObject, Duty {
             spare.target = self; spare.representedObject = Self.key(s)
             sub.addItem(end); sub.addItem(spare)
             row.submenu = sub
-            menu.addItem(indented(row))
+            menu.addItem(row)
         }
         if hottest.count > menuLimit {
             let more = NSMenuItem(title: "and \(hottest.count - menuLimit) more…", action: nil, keyEquivalent: "")
             more.isEnabled = false
-            menu.addItem(indented(more))
+            menu.addItem(more)
         }
+        menu.addItem(.separator())
         let auto = NSMenuItem(title: "Banish Automatically", action: #selector(toggleAuto), keyEquivalent: "")
         auto.target = self; auto.state = autoBanish ? .on : .off
-        menu.addItem(indented(auto))
+        menu.addItem(auto)
     }
 
     private func soul(for sender: NSMenuItem) -> LostSouls.Soul? {

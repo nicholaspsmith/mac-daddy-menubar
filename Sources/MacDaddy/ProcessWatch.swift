@@ -126,8 +126,11 @@ final class ProcessWatch: NSObject, Duty {
         onChange?()
     }
 
+    var title: String { count.map { "Processes  \($0) / \(limit) (\($0 * 100 / max(limit, 1))%)" } ?? "Processes  —" }
+    var warning: String? { zombieError }
+
+    /// Unlike the other duties, Processes sits at the top level: it is the status.
     func addMenuItems(to menu: NSMenu) {
-        let title = count.map { "Processes  \($0) / \(limit) (\($0 * 100 / max(limit, 1))%)" } ?? "Processes  —"
         heading(title, error: zombieError).forEach(menu.addItem)
 
         let mono = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
@@ -161,8 +164,10 @@ final class ProcessWatch: NSObject, Duty {
         spawn.submenu = sm
         menu.addItem(indented(spawn))
 
-        let z = NSMenuItem(title: "Zombies  \(zombies.count)", action: nil, keyEquivalent: "")
-        menu.addItem(indented(z))
+        if zombies.count > 0 {
+            let z = NSMenuItem(title: "Zombies  \(zombies.count)", action: nil, keyEquivalent: "")
+            menu.addItem(indented(z))
+        }
         if let p = zombies.quittable {
             let q = NSMenuItem(title: "Quit \(displayName(p.comm)) [\(p.pid)] to reap \(p.zombies)", action: #selector(quitZombieParent(_:)), keyEquivalent: "")
             q.target = self; q.representedObject = p

@@ -28,6 +28,8 @@ Prefer a plain symbol? **menu ▸ Icon ▸ Plain symbol**.
 
 ## Menu
 
+Processes sits at the top as the status. Each other duty is one line summing it up ("Downloads — swept 10/1/26", "Hoes — 1 on the clock · 1 suggestion") with its controls in a submenu; the line goes bold when something is waiting on you and red when the duty is failing.
+
 | Item | Purpose |
 |---|---|
 | Processes | live count against the per-UID limit, a two-minute sparkline, crash-looping processes, Top Spawners (each opens a detail window), Zombies (when one of your own, non-system processes is holding zombies: "Quit `<parent>` to reap N", which asks before quitting it), Open Activity Monitor |
@@ -38,7 +40,7 @@ Prefer a plain symbol? **menu ▸ Icon ▸ Plain symbol**.
 | Icon | Mac Daddy or plain symbol |
 | Start at Login | SMAppService — no launchd agent |
 
-A failing duty shows a warning with the reason directly under its heading. Settings persist in `defaults` domain `com.nicholaspsmith.MacDaddy`, and are carried over from Media Tracking Killer and Download Recycler on first launch.
+A failing duty's line turns red, and its submenu starts with the reason. Settings persist in `defaults` domain `com.nicholaspsmith.MacDaddy`, and are carried over from Media Tracking Killer and Download Recycler on first launch.
 
 ## What it replaced
 

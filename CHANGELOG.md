@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [Unreleased]
+
+- The menu is shorter: Media Tracking, Downloads, Lost Souls and Hoes are each one summary line ("Lost Souls — 2 wandering") with their controls in a submenu. A line goes bold when something is waiting on you and red when that duty is failing. Processes stays at the top, and its Zombies line only appears when there are some
+
 ## [1.4.0] - 2026-10-02
 
 - New **Hoes** duty: lists third-party processes working the CPU (80% or more for 2 minutes) with **End** and **Ignore**. When you force-quit one while it's still hot, Mac Daddy suggests a rule to end it for you next time, guessing the threshold and duration from what it saw; **Yes**, **Adjust** or **No**. Force-quit it again and the rule tightens. Rules can be adjusted, paused, set to restart a launchd job, or skipped while the app is in front. macOS's own programs are never touched

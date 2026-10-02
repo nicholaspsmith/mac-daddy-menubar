@@ -162,10 +162,8 @@ final class App: NSObject, NSApplicationDelegate {
     private func buildMenu(_ menu: NSMenu) {
         processWatch.addMenuItems(to: menu)
         menu.addItem(.separator())
-        tracker.addMenuItems(to: menu)
-        downloads.addMenuItems(to: menu)
-        lostSouls.addMenuItems(to: menu)
-        hoes.addMenuItems(to: menu)
+        // Each cleanup duty is one summary line; its controls open as a submenu.
+        cleanupDuties.forEach { menu.addItem($0.sectionItem()) }
         menu.addItem(.separator())
 
         let icon = NSMenuItem(title: "Icon", action: nil, keyEquivalent: "")

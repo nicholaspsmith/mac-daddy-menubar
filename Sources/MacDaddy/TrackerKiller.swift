@@ -46,14 +46,17 @@ final class TrackerKiller: NSObject, Duty {
         if hit { onSweep?(.hatTip) }
     }
 
+    var title: String { enabled ? "Media Tracking — \(killsThisSession) killed" : "Media Tracking — Off" }
+    var warning: String? { nil }
+
     func addMenuItems(to menu: NSMenu) {
-        heading("Media Tracking", error: nil).forEach(menu.addItem)
+        warningItems().forEach(menu.addItem)
         let toggle = NSMenuItem(title: "Enabled", action: #selector(toggleEnabled), keyEquivalent: "")
         toggle.target = self; toggle.state = enabled ? .on : .off
-        menu.addItem(indented(toggle))
+        menu.addItem(toggle)
         let killNowItem = NSMenuItem(title: "Kill Now (\(killsThisSession) this session)", action: #selector(killNow), keyEquivalent: "")
         killNowItem.target = self
-        menu.addItem(indented(killNowItem))
+        menu.addItem(killNowItem)
 
         let interval = NSMenuItem(title: "Interval", action: nil, keyEquivalent: "")
         let im = NSMenu()
@@ -63,7 +66,7 @@ final class TrackerKiller: NSObject, Duty {
             im.addItem(i)
         }
         interval.submenu = im
-        menu.addItem(indented(interval))
+        menu.addItem(interval)
 
         let procs = NSMenuItem(title: "Processes", action: nil, keyEquivalent: "")
         let pm = NSMenu()
@@ -73,7 +76,7 @@ final class TrackerKiller: NSObject, Duty {
             pm.addItem(i)
         }
         procs.submenu = pm
-        menu.addItem(indented(procs))
+        menu.addItem(procs)
     }
 
     @objc private func toggleEnabled() { enabled.toggle() }

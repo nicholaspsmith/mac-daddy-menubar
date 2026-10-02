@@ -93,19 +93,27 @@ final class DownloadSweeper: NSObject, Duty {
         else { try? data.write(to: logURL) }
     }
 
+    var title: String {
+        guard enabled else { return "Downloads — Off" }
+        guard lastSweep != .distantPast else { return "Downloads — not swept yet" }
+        let f = DateFormatter(); f.dateStyle = .short; f.timeStyle = .none
+        return "Downloads — swept \(f.string(from: lastSweep))"
+    }
+    var warning: String? { lastError }
+
     func addMenuItems(to menu: NSMenu) {
-        heading("Downloads", error: lastError).forEach(menu.addItem)
+        warningItems().forEach(menu.addItem)
         if lastError != nil, let errItem = menu.items.last {
             errItem.action = #selector(openPrivacy); errItem.target = self   // clicking the ⚠ line opens Files and Folders
         }
         let toggle = NSMenuItem(title: "Enabled", action: #selector(toggleEnabled), keyEquivalent: "")
         toggle.target = self; toggle.state = enabled ? .on : .off
-        menu.addItem(indented(toggle))
+        menu.addItem(toggle)
         let f = DateFormatter(); f.dateStyle = .short; f.timeStyle = .short
         let last = lastSweep == .distantPast ? "never" : f.string(from: lastSweep)
         let run = NSMenuItem(title: "Sweep Now (last: \(last), \(trashedLastSweep) trashed)", action: #selector(runNow), keyEquivalent: "")
         run.target = self
-        menu.addItem(indented(run))
+        menu.addItem(run)
         let keep = NSMenuItem(title: "Keep Files For", action: nil, keyEquivalent: "")
         let km = NSMenu()
         for d in Self.dayChoices {
@@ -114,10 +122,10 @@ final class DownloadSweeper: NSObject, Duty {
             km.addItem(i)
         }
         keep.submenu = km
-        menu.addItem(indented(keep))
+        menu.addItem(keep)
         let log = NSMenuItem(title: "Open Log", action: #selector(openLog), keyEquivalent: "")
         log.target = self
-        menu.addItem(indented(log))
+        menu.addItem(log)
     }
 
     @objc private func toggleEnabled() { enabled.toggle() }
