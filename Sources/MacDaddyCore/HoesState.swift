@@ -23,9 +23,9 @@ public struct HoesState: Equatable {
         public var evidence: [Hoes.Evidence]
         public let at: Date
 
-        public var prompt: String { "Auto-kill \(name)? (≥\(threshold)% for \(minutes) min)" }
+        public var prompt: String { "Auto pimp slap \(name)? (≥\(threshold)% for \(minutes) min)" }
         public var notification: String {
-            "You ended \(name) after \(observedMinutes) min at \(meanCPU)% CPU. Auto-kill it next time?"
+            "You ended \(name) after \(observedMinutes) min at \(meanCPU)% CPU. Pimp slap it automatically next time?"
         }
     }
 

@@ -303,7 +303,7 @@ final class HoesDuty: NSObject, Duty {
             let row = NSMenuItem(title: title, action: nil, keyEquivalent: "")
             let sub = choices(threshold: r.threshold, minutes: r.minutes, id: r.id, #selector(ruleThreshold(_:)), #selector(ruleMinutes(_:)))
             if r.restartLabel != nil {
-                let i = item("Restart After Kill", #selector(toggleRestart(_:)), r.id); i.state = r.restartAfterKill ? .on : .off
+                let i = item("Restart After Pimp Slap", #selector(toggleRestart(_:)), r.id); i.state = r.restartAfterKill ? .on : .off
                 sub.addItem(i)
             }
             let front = item("Skip While In Front", #selector(toggleFront(_:)), r.id); front.state = r.skipWhenFrontmost ? .on : .off

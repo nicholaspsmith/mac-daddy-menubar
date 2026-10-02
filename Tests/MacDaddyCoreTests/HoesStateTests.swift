@@ -30,8 +30,8 @@ final class HoesStateTests: XCTestCase {
         XCTAssertEqual(sug.restartLabel, "com.x.spin")
         XCTAssertEqual(sug.evidence, [.forceQuitWindow])
         XCTAssertEqual(s.suggestions, [sug])
-        XCTAssertEqual(sug.prompt, "Auto-kill spin? (≥90% for 5 min)")
-        XCTAssertEqual(sug.notification, "You ended spin after 10 min at 99% CPU. Auto-kill it next time?")
+        XCTAssertEqual(sug.prompt, "Auto pimp slap spin? (≥90% for 5 min)")
+        XCTAssertEqual(sug.notification, "You ended spin after 10 min at 99% CPU. Pimp slap it automatically next time?")
     }
 
     func testASecondForceQuitReplacesThePendingSuggestion() {

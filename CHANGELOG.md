@@ -12,6 +12,7 @@ Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 
 - The menu is shorter: Media Tracking, Downloads, Lost Souls and Hoes are each one summary line ("Lost Souls — 2 wandering") with their controls in a submenu. A line goes bold when something is waiting on you and red when that duty is failing. Processes stays at the top, and its Zombies line only appears when there are some
 - Top Spawners is now called Skanky Ass Hoes
+- Kill is now Pimp Slap throughout the menus and notifications: Pimp Slap Now, Restart After Pimp Slap, "Auto pimp slap …?" suggestions, "Pimp slapped runaway …" and the UA pimp-slap counts. Log files keep their old KILLED lines
 
 ## [1.4.0] - 2026-10-02
 

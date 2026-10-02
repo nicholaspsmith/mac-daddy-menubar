@@ -46,7 +46,7 @@ final class TrackerKiller: NSObject, Duty {
         if hit { onSweep?(.hatTip) }
     }
 
-    var title: String { enabled ? "Media Tracking — \(killsThisSession) killed" : "Media Tracking — Off" }
+    var title: String { enabled ? "Media Tracking — \(killsThisSession) pimp slapped" : "Media Tracking — Off" }
     var warning: String? { nil }
 
     func addMenuItems(to menu: NSMenu) {
@@ -54,7 +54,7 @@ final class TrackerKiller: NSObject, Duty {
         let toggle = NSMenuItem(title: "Enabled", action: #selector(toggleEnabled), keyEquivalent: "")
         toggle.target = self; toggle.state = enabled ? .on : .off
         menu.addItem(toggle)
-        let killNowItem = NSMenuItem(title: "Kill Now (\(killsThisSession) this session)", action: #selector(killNow), keyEquivalent: "")
+        let killNowItem = NSMenuItem(title: "Pimp Slap Now (\(killsThisSession) this session)", action: #selector(killNow), keyEquivalent: "")
         killNowItem.target = self
         menu.addItem(killNowItem)
 

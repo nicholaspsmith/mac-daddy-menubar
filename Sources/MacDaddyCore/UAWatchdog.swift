@@ -60,7 +60,7 @@ public enum UAWatchdog {
     }
 
     public static func notification(label: String, audioRestored: Bool) -> String {
-        "Killed runaway \(label)" + (audioRestored ? " — audio restored" : "")
+        "Pimp slapped runaway \(label)" + (audioRestored ? " — audio restored" : "")
     }
 
     /// Whether `launchctl print-disabled gui/<uid>` lists `label` as disabled

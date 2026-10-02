@@ -111,7 +111,7 @@ final class ProcessWatch: NSObject, Duty {
             if pct >= warnPct {
                 if !lastNotifiedAtOrAbove {
                     notifier.post(title: "Process count high",
-                                  body: "\(n) of \(limit) processes (\(pct)%). Kill some before fork() starts failing.")
+                                  body: "\(n) of \(limit) processes (\(pct)%). Pimp slap some before fork() starts failing.")
                     lastNotifiedAtOrAbove = true
                 }
             } else if pct < warnPct - 5 {
