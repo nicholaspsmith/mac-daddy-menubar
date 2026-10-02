@@ -12,13 +12,13 @@ private let log = Logger(subsystem: "com.nicholaspsmith.MacDaddy", category: "lo
 
 
 /// The BSD info of a live process, or nil when it is gone.
-private func bsdInfo(_ pid: pid_t) -> proc_bsdinfo? {
+func bsdInfo(_ pid: pid_t) -> proc_bsdinfo? {
     var info = proc_bsdinfo()
     let size = Int32(MemoryLayout<proc_bsdinfo>.size)
     return proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, size) == size ? info : nil
 }
 
-private func startDate(_ info: proc_bsdinfo) -> Date {
+func startDate(_ info: proc_bsdinfo) -> Date {
     Date(timeIntervalSince1970: Double(info.pbi_start_tvsec) + Double(info.pbi_start_tvusec) / 1_000_000)
 }
 

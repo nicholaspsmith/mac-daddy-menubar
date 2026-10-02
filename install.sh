@@ -6,7 +6,7 @@
 # Copyright (c) 2026 Nicholas Smith
 
 # Build Mac Daddy.app, symlink it into ~/Applications, retire the apps and the
-# launchd agent it replaces, offer Start at Login, and (re)launch it.
+# launchd agents it replaces, offer Start at Login, and (re)launch it.
 set -euo pipefail
 
 RELEASE_KIT="$(cd "$(dirname "$0")/.." && pwd)/StatusItemKit/scripts/release/adopt.sh"
@@ -50,6 +50,23 @@ if [ -f "$HOME/.local/bin/godot-headless-reaper" ]; then
         echo "Could not move godot-headless-reaper to the Trash — delete it by hand: $reaper_bin" >&2
     fi
 fi
+
+# --- retire the ua-watchdog launchd agent (its log stays: the duty appends to it) ---
+UAWD="com.nicholassmith.ua-watchdog"
+launchctl bootout "gui/$(id -u)/$UAWD" 2>/dev/null || true
+if [ -f "$HOME/Library/LaunchAgents/$UAWD.plist" ]; then
+    rm -f "$HOME/Library/LaunchAgents/$UAWD.plist"; echo "Removed the $UAWD agent."
+fi
+if [ -f "$HOME/.local/bin/ua-watchdog.sh" ]; then
+    uawd_bin="$HOME/.local/bin/ua-watchdog.sh"
+    if osascript -e "tell application \"Finder\" to delete POSIX file \"$uawd_bin\"" >/dev/null 2>&1 \
+        || { mkdir -p "$HOME/.Trash" 2>/dev/null && mv "$uawd_bin" "$HOME/.Trash/" 2>/dev/null; }; then
+        echo "Moved ua-watchdog.sh to the Trash."
+    else
+        echo "Could not move ua-watchdog.sh to the Trash — delete it by hand: $uawd_bin" >&2
+    fi
+fi
+rm -f "$HOME/.local/state/ua-watchdog.heartbeat" "$HOME/.local/state/ua-watchdog.state"
 
 # --- Start at Login (ask; never unasked) --------------------------------------
 APP="$HOME/Applications/$APP_NAME"

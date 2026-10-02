@@ -4,10 +4,10 @@
 
 <p align="center">Part of <strong><a href="https://menumon.nicksmith.software">Menumon</a></strong>.</p>
 
-Keeps your Mac in line: kills Apple's media trackers, trashes stale downloads, finds orphaned processes burning CPU, and sweats when your process count climbs. Built on
+Keeps your Mac in line: kills Apple's media trackers, trashes stale downloads, finds orphaned processes burning CPU, learns which CPU hogs you force-quit and ends them for you, and sweats when your process count climbs. Built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit).
 
-**Version 1.3.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
+**Version 1.4.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
@@ -16,7 +16,7 @@ The menu-bar icon is Menu Pimp, the Mac Daddy of the menu bar: his illustrated m
 - **Cool, purple hat** — plenty of headroom
 - **Sweating, amber hat** — the process count is climbing toward the per-user limit; a drop of sweat
 - **Red-hot, red hat** — close to the limit: two drops of sweat
-- **Hat tip** — for two seconds after the media-tracker killer or Lost Souls ends something
+- **Hat tip** — for two seconds after the media-tracker killer, Lost Souls or Hoes ends something
 - **Chain glint** — for two seconds after the Downloads sweep trashes files
 - **Asleep, eyes closed, grey, with a "z"** — every cleanup is paused (the hat keeps its warning colour)
 
@@ -34,6 +34,7 @@ Prefer a plain symbol? **menu ▸ Icon ▸ Plain symbol**.
 | Media Tracking ▸ Enabled / Kill Now / Interval / Processes | kills Apple's media analysis daemons every 5 / 15 / 30 / 60 s; one toggle per daemon |
 | Downloads ▸ Enabled / Sweep Now / Keep Files For / Open Log | checks every 30 minutes and sweeps at most once a day (once 24 h have passed since the last sweep), moving files older than 7 / 14 / 30 / 60 / 90 days from `~/Downloads` to the Trash (restorable, never a hard delete); Sweep Now runs one immediately |
 | Lost Souls ▸ Enabled / each soul ▸ End, Spare / Banish Automatically | samples your processes every 30 s; a *lost soul* is one of yours that launchd adopted (parent PID 1) and that averaged over 50% CPU for 10 minutes — a hung headless test run, a script whose terminal closed. Apps, launchd jobs, XPC services and app extensions (Safari tabs, virtual machines), macOS's own programs, helpers a background service or their own app is responsible for, normally orphaned daemons (cfprefsd, mds, tmux, ollama, …) and souls you Spare are left out. Time asleep doesn't count. Mac Daddy notifies you once and lists it as `name [pid] — X% for M min` (the 8 hungriest, then "and N more…"; "None wandering" when there are none); **End** checks it is still the same process, sends SIGTERM, then SIGKILL after 5 s. Nothing is ended unless you click End or turn on **Banish Automatically** (off by default), which ends a soul once it has qualified continuously for 30 minutes |
+| Hoes ▸ Enabled / each hoe ▸ End, Ignore / suggestions ▸ Yes, Adjust, No / Rules / Ignored / Open Log | samples your processes every 30 s; a *hoe* is a third-party one (anything not signed by Apple as part of macOS) working the CPU at 80% or more for 2 minutes. They are listed as `name [pid] — X% for M min` with **End** and **Ignore**; being a hoe alone sends no notification. When a hoe vanishes while still hot — you force-quit it, or ended it here — Mac Daddy guesses a rule (its mean CPU less 10, to the nearest 5, within 80–98%; for half as long as it had run hot, 2–30 min) and asks once: "Auto-kill spin? (≥90% for 5 min)". Activity Monitor or the Force Quit window in front, or launchd restarting it, count as extra evidence. **Yes** makes the rule, **Adjust** changes the guess first, **No** never asks again for that program. Force-quit it again and its rule tightens (and says so). Under **Rules** each rule has Threshold, Duration (or on sight), Restart After Kill (when its launchd job is known), Skip While In Front (on for apps), Paused and Delete. A rule ends a process with SIGTERM, then SIGKILL after 5 s, and notifies you. Never touched: macOS's own programs, Mac Daddy, and anything Ignored (un-ignore it under **Ignored**). On a Mac with Universal Audio software the old UA watchdog is three built-in rules, killing at once and restarting the mixer engine so Apollo audio comes back: an orphaned `UA Mixer Helper` at 80% on sight, `UA Mixer Engine` at 98% for 2 min, any other UA process at 90% for 1 min. Built-ins can be adjusted or paused, not deleted; they also log to `~/.local/state/ua-watchdog.log`, summarised at the foot of **Rules**. Everything else logs to `~/Library/Logs/MacDaddy/hoes.log`. Hoes only runs while Mac Daddy is running |
 | Icon | Mac Daddy or plain symbol |
 | Start at Login | SMAppService — no launchd agent |
 
@@ -49,6 +50,7 @@ A failing duty shows a warning with the reason directly under its heading. Setti
 | Download Recycler | quits it, turns its login item off, removes its `~/Applications` link |
 | Process Monitor | quits it, turns its login item off, removes its `~/Applications` link |
 | godot-headless-reaper (launchd agent) | boots it out, removes its plist, moves its script to the Trash (Lost Souls does its job, for any program) |
+| ua-watchdog (launchd agent, from Apollo Monitor) | boots it out, removes its plist and its heartbeat and state files, moves its script to the Trash, keeps its log (the built-in UA rules in Hoes carry on writing it). If you had disabled the agent, those rules start paused |
 
 ## Requirements
 
@@ -67,7 +69,7 @@ cd mac-daddy-menubar
 ./install.sh
 ```
 
-`install.sh` builds the app, symlinks it into `~/Applications`, retires the apps and agent above, offers Start at Login (only when run in a terminal), and launches it.
+`install.sh` builds the app, symlinks it into `~/Applications`, retires the apps and agents above, offers Start at Login (only when run in a terminal), and launches it.
 
 ### Start at Login
 
@@ -95,7 +97,7 @@ System Settings ▸ General ▸ Login Items.)
 
 ## Why not a SwiftBar plugin?
 
-This is a standalone `.app` built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit), not a script under a plugin host: no SwiftBar to install, a real AppKit menu instead of rendered stdout, event-driven updates instead of a re-run timer, and an icon that keeps its place in the bar. It replaced three apps and a launchd agent; now the schedules, the Trash-only sweep and Start at Login are one app with no host. The full comparison is in [StatusItemKit's README](https://github.com/nicholaspsmith/StatusItemKit#why-not-swiftbar).
+This is a standalone `.app` built on [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit), not a script under a plugin host: no SwiftBar to install, a real AppKit menu instead of rendered stdout, event-driven updates instead of a re-run timer, and an icon that keeps its place in the bar. It replaced three apps and two launchd agents; now the schedules, the Trash-only sweep and Start at Login are one app with no host. The full comparison is in [StatusItemKit's README](https://github.com/nicholaspsmith/StatusItemKit#why-not-swiftbar).
 
 ## The menu-bar suite
 
@@ -107,10 +109,10 @@ colour, and cooperative hiding so no icon strands another.
 | App | What it does |
 |---|---|
 | [Claude Usage](https://github.com/nicholaspsmith/claude-usage-menubar) | Claude Code plan limits, resets, and live agent sessions |
-| [Apollo Monitor](https://github.com/nicholaspsmith/apollo-monitor-menubar) | Apollo audio-interface monitor level, plus a mixer-process watchdog |
+| [Apollo Monitor](https://github.com/nicholaspsmith/apollo-monitor-menubar) | Apollo audio-interface monitor level |
 | [Battery Time](https://github.com/nicholaspsmith/battery-time-menubar) | Time remaining, power mode, and 24h usage |
 | [VPN & DNS](https://github.com/nicholaspsmith/vpn-dns-menubar) | A chameleon for Mullvad + Tailscale state, with a DNS watcher |
-| **Mac Daddy** | Process-count watch, media-tracker killer, Downloads sweeper and lost-soul finder, in one app |
+| **Mac Daddy** | Process-count watch, media-tracker killer, Downloads sweeper, lost-soul finder and Hoes (learns which CPU hogs you force-quit, UA watchdog built in), in one app |
 | [KeyLight](https://github.com/nicholaspsmith/keylight-menubar) | Ctrl+brightness keys remapped to keyboard backlight |
 | [MacRecorder](https://github.com/nicholaspsmith/MacRecorder) | Screen recording with system audio |
 | [Barn](https://github.com/nicholaspsmith/menubar-barn) | Sunset: macOS 26 and earlier only. Hid a block of status icons by width; on macOS 27 use System Settings ▸ Menu Bar |
