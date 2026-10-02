@@ -6,119 +6,61 @@
 
 import Foundation
 
-/// Decides which Universal Audio processes have run away. Feed it one
-/// `ps -Ao pid=,ppid=,pcpu=,command= -ww` snapshot per minute; it never kills
-/// anything itself. The rules are the old `ua-watchdog.sh` agent's:
-///   * an orphaned UA Mixer Helper (PPID 1) at `orphanCPU` % or more is killed
-///     at once — the bug that silently takes Apollo audio down;
-///   * the real-time UA Mixer Engine needs `cpuEngine` % for `ticksEngine` samples in a row;
-///   * every other UA process needs `cpu` % for `ticks` samples in a row.
-/// Counts are per PID and drop when a sample falls below the bar. Only the
-/// integer part of `%cpu` is compared, as the script did.
-public struct UAWatchdog {
-    public enum Role: Equatable { case helper, engine, other }
-
-    public struct Proc: Equatable {
-        public let pid: Int
-        public let ppid: Int
-        /// `%cpu` exactly as `ps` printed it; the log quotes it.
-        public let cpu: String
-        public let command: String
-        public init(pid: Int, ppid: Int, cpu: String, command: String) {
-            self.pid = pid; self.ppid = ppid; self.cpu = cpu; self.command = command
-        }
-    }
-
-    public struct Kill: Equatable {
-        public let pid: Int
-        public let label: String
-        public init(pid: Int, label: String) { self.pid = pid; self.label = label }
-    }
-
-    /// What one snapshot calls for: SIGKILL these, log these messages (in
-    /// order, unstamped), and kickstart the mixer engine if the audio path was hit.
-    public struct Scan: Equatable {
-        public var kills: [Kill] = []
-        public var messages: [String] = []
-        public var audioPathHit = false
-        public init() {}
-
-        /// The notification body, or nil when nothing was killed.
-        public var notification: String? {
-            guard let first = kills.first else { return nil }
-            return "Killed runaway \(first.label)" + (audioPathHit ? " — audio restored" : "")
-        }
-    }
-
-    /// Logged after the mixer engine is kickstarted.
+/// The old `ua-watchdog.sh` agent, as built-in Hoes rules:
+///   * an orphaned UA Mixer Helper (PPID 1) at 80 % or more is killed on sight —
+///     the bug that silently takes Apollo audio down;
+///   * the real-time UA Mixer Engine at 98 % for 2 minutes;
+///   * any other UA process at 90 % for 1 minute.
+/// All SIGKILL; when the helper or the engine dies, the mixer engine is
+/// kickstarted so sound comes back.
+public enum UAWatchdog {
+    /// Present only when UA software is installed; the built-ins need it.
+    public static let folder = "/Library/Application Support/Universal Audio"
+    public static let engineLabel = "com.uaudio.ua_mixer_engine"
+    /// Logged to ua-watchdog.log after the mixer engine is kickstarted.
     public static let kickstartMessage = "kickstarted UA mixer engine to restore audio path"
 
-    public let cpu: Int
-    public let cpuEngine: Int
-    public let orphanCPU: Int
-    public let ticks: Int
-    public let ticksEngine: Int
-    /// Consecutive samples over the bar, by PID, for processes not yet killed.
-    public private(set) var pending: [Int: Int] = [:]
+    private static let marks = ["/Universal Audio/", "UA Connect.app", "UA Mixer"]
+    private static let audioPath = ["UA Mixer Helper.app", "UA Mixer Engine.app"]
 
-    public init(cpu: Int = 90, cpuEngine: Int = 98, orphanCPU: Int = 80, ticks: Int = 2, ticksEngine: Int = 3) {
-        self.cpu = cpu; self.cpuEngine = cpuEngine; self.orphanCPU = orphanCPU
-        self.ticks = ticks; self.ticksEngine = ticksEngine
-    }
+    public static let builtInRules: [HoeRule] = [
+        HoeRule(id: "ua.helper", name: "Orphaned UA Mixer Helper",
+                match: .command(any: ["UA Mixer Helper.app"], none: [], orphanedOnly: true),
+                threshold: 80, minutes: 0, action: .kill, restartLabel: engineLabel, restartAfterKill: true,
+                builtIn: true, requiresPath: folder),
+        HoeRule(id: "ua.engine", name: "UA Mixer Engine",
+                match: .command(any: ["UA Mixer Engine.app"], none: [], orphanedOnly: false),
+                threshold: 98, minutes: 2, action: .kill, restartLabel: engineLabel, restartAfterKill: true,
+                builtIn: true, requiresPath: folder),
+        HoeRule(id: "ua.other", name: "Other UA processes",
+                match: .command(any: marks, none: ["UA Mixer Engine.app"], orphanedOnly: false),
+                threshold: 90, minutes: 1, action: .kill, restartLabel: engineLabel, restartAfterKill: true,
+                restartOnlyIf: audioPath, builtIn: true, requiresPath: folder),
+    ]
 
-    /// Forget every pending count (the duty was turned off and on).
-    public mutating func reset() { pending = [:] }
+    public static func isUA(_ command: String) -> Bool { marks.contains { command.contains($0) } }
 
-    /// The install folders, or the engine/helper name.
-    public static func isUA(_ command: String) -> Bool {
-        command.contains("/Universal Audio/") || command.contains("UA Connect.app") || command.contains("UA Mixer")
-    }
-
-    /// A readable name and whether it is on the audio path.
-    public static func classify(_ command: String) -> (label: String, role: Role) {
-        if command.contains("UA Mixer Helper.app") { return ("UA Mixer Helper", .helper) }
-        if command.contains("UA Mixer Engine.app") { return ("UA Mixer Engine", .engine) }
-        if command.contains("UA Connect.app") { return ("UA Connect", .other) }
-        if command.contains("UAD Meter") { return ("UAD Meter", .other) }
-        if command.contains("UAD Console.app") { return ("UAD Console", .other) }
+    /// A readable name for a UA process.
+    public static func label(_ command: String) -> String {
+        if command.contains("UA Mixer Helper.app") { return "UA Mixer Helper" }
+        if command.contains("UA Mixer Engine.app") { return "UA Mixer Engine" }
+        if command.contains("UA Connect.app") { return "UA Connect" }
+        if command.contains("UAD Meter") { return "UAD Meter" }
+        if command.contains("UAD Console.app") { return "UAD Console" }
         // zsh's `:t`: everything after the last slash of the whole command line.
-        return (command.split(separator: "/", omittingEmptySubsequences: false).last.map(String.init) ?? command, .other)
+        return command.split(separator: "/", omittingEmptySubsequences: false).last.map(String.init) ?? command
     }
 
-    public static func parse(ps text: String) -> [Proc] {
-        text.split(separator: "\n").compactMap { line in
-            let f = line.split(maxSplits: 3, omittingEmptySubsequences: true, whereSeparator: { $0 == " " || $0 == "\t" })
-            guard f.count == 4, let pid = Int(f[0]), let ppid = Int(f[1]) else { return nil }
-            return Proc(pid: pid, ppid: ppid, cpu: String(f[2]), command: String(f[3]))
+    /// The old agent's KILLED line, so ua-watchdog.log's history carries on.
+    public static func killMessage(_ d: Hoes.Due, rule: HoeRule) -> String {
+        if case .command(_, _, true) = rule.match {
+            return "KILLED orphaned \(d.name) pid=\(d.pid) cpu=\(d.cpu)% (fast-path: PPID=1)"
         }
+        return "KILLED runaway \(d.name) pid=\(d.pid) cpu=\(d.cpu)% (>=\(rule.threshold)% x \(d.samples) ticks)"
     }
 
-    public mutating func scan(ps text: String) -> Scan {
-        var out = Scan()
-        var next: [Int: Int] = [:]
-        for p in Self.parse(ps: text) where Self.isUA(p.command) {
-            let whole = Int(p.cpu.prefix { $0 != "." }) ?? 0
-            let (label, role) = Self.classify(p.command)
-            if role == .helper && p.ppid == 1 && whole >= orphanCPU {
-                out.kills.append(Kill(pid: p.pid, label: label))
-                out.messages.append("KILLED orphaned \(label) pid=\(p.pid) cpu=\(p.cpu)% (fast-path: PPID=1)")
-                out.audioPathHit = true
-                continue
-            }
-            let (bar, need) = role == .engine ? (cpuEngine, ticksEngine) : (cpu, ticks)
-            guard whole >= bar else { continue }
-            let count = (pending[p.pid] ?? 0) + 1
-            if count >= need {
-                out.kills.append(Kill(pid: p.pid, label: label))
-                out.messages.append("KILLED runaway \(label) pid=\(p.pid) cpu=\(p.cpu)% (>=\(bar)% x \(count) ticks)")
-                if role != .other { out.audioPathHit = true }
-            } else {
-                next[p.pid] = count
-                out.messages.append("WARN \(label) pid=\(p.pid) cpu=\(p.cpu)% (tick \(count)/\(need) >=\(bar)%)")
-            }
-        }
-        pending = next
-        return out
+    public static func notification(label: String, audioRestored: Bool) -> String {
+        "Killed runaway \(label)" + (audioRestored ? " — audio restored" : "")
     }
 
     /// Whether `launchctl print-disabled gui/<uid>` lists `label` as disabled

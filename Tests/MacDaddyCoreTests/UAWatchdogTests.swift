@@ -7,20 +7,27 @@
 import XCTest
 @testable import MacDaddyCore
 
+/// The UA built-in Hoes rules reproduce the old `ua-watchdog.sh` agent, sampled
+/// every 30 s instead of every 60 s.
 final class UAWatchdogTests: XCTestCase {
     let helper = "/Applications/Universal Audio/UAD Console.app/Contents/Helpers/UA Mixer Helper.app/Contents/MacOS/UA Mixer Helper"
     let engine = "/Library/Application Support/Universal Audio/Apollo/UA Mixer Engine.app/Contents/MacOS/UA Mixer Engine -silent"
     let connect = "/Applications/UA Connect.app/Contents/MacOS/UA Connect --no-window"
     let meter = "/Applications/Universal Audio/UAD Meter & Control Panel.app/Contents/MacOS/UAD Meter & Control Panel -h"
     let console = "/Applications/Universal Audio/UAD Console.app/Contents/MacOS/UAD Console"
+    let rules = UAWatchdog.builtInRules
 
-    /// One `ps -Ao pid=,ppid=,pcpu=,command= -ww` line.
-    func line(_ pid: Int, ppid: Int = 500, cpu: String, _ command: String) -> String {
-        "  \(pid)  \(ppid)  \(cpu) \(command)"
+    func p(_ pid: Int, ppid: Int = 500, cpu: Double, _ command: String) -> P {
+        P(pid: pid, ppid: ppid, cpu: cpu, command: command)
     }
 
-    func scan(_ w: inout UAWatchdog, _ lines: String...) -> UAWatchdog.Scan {
-        w.scan(ps: lines.joined(separator: "\n"))
+    func rule(_ id: String) -> HoeRule { rules.first { $0.id == id }! }
+
+    /// Rounds every 30 s, returning the last.
+    func feed(_ h: Hoes, from: Int = 0, through: Int, _ procs: [P]) -> Hoes.Round {
+        var last = Hoes.Round()
+        for at in stride(from: from, through: through, by: 30) { last = round(h, at: at, procs, rules: rules) }
+        return last
     }
 
     // MARK: - Which processes, and what they are called
@@ -33,136 +40,101 @@ final class UAWatchdogTests: XCTestCase {
         XCTAssertFalse(UAWatchdog.isUA("/usr/sbin/coreaudiod"))
     }
 
-    func testLabelsAndRoles() {
-        XCTAssertEqual(UAWatchdog.classify(helper).label, "UA Mixer Helper")
-        XCTAssertEqual(UAWatchdog.classify(helper).role, .helper)
-        XCTAssertEqual(UAWatchdog.classify(engine).label, "UA Mixer Engine")
-        XCTAssertEqual(UAWatchdog.classify(engine).role, .engine)
-        XCTAssertEqual(UAWatchdog.classify(connect).label, "UA Connect")
-        XCTAssertEqual(UAWatchdog.classify(connect).role, .other)
-        XCTAssertEqual(UAWatchdog.classify(meter).label, "UAD Meter")
-        XCTAssertEqual(UAWatchdog.classify(console).label, "UAD Console")
+    func testLabels() {
+        XCTAssertEqual(UAWatchdog.label(helper), "UA Mixer Helper")
+        XCTAssertEqual(UAWatchdog.label(engine), "UA Mixer Engine")
+        XCTAssertEqual(UAWatchdog.label(connect), "UA Connect")
+        XCTAssertEqual(UAWatchdog.label(meter), "UAD Meter")
+        XCTAssertEqual(UAWatchdog.label(console), "UAD Console")
         // Anything else: the basename of the whole command, as zsh's `:t` gives it.
-        XCTAssertEqual(UAWatchdog.classify("/Library/Application Support/Universal Audio/bin/UA Mixer Sentinel").label,
-                       "UA Mixer Sentinel")
-        XCTAssertEqual(UAWatchdog.classify("/Library/Application Support/Universal Audio/bin/UA Mixer Sentinel").role, .other)
+        XCTAssertEqual(UAWatchdog.label("/Library/Application Support/Universal Audio/bin/UA Mixer Sentinel"), "UA Mixer Sentinel")
+        // Hoes names UA processes the same way.
+        XCTAssertEqual(Hoes.name(path: "/x/UA Connect", bundleID: nil, command: connect), "UA Connect")
     }
 
-    func testParsesPsKeepingTheCommandWhole() {
-        let procs = UAWatchdog.parse(ps: line(952, ppid: 1, cpu: "8.3", engine) + "\n\ngarbage\n")
-        XCTAssertEqual(procs, [UAWatchdog.Proc(pid: 952, ppid: 1, cpu: "8.3", command: engine)])
+    func testBuiltInsAreUAOnlyAndNeverSkippedInFront() {
+        for r in rules {
+            XCTAssertTrue(r.builtIn)
+            XCTAssertFalse(r.skipWhenFrontmost)
+            XCTAssertEqual(r.action, .kill)
+            XCTAssertEqual(r.requiresPath, "/Library/Application Support/Universal Audio")
+        }
     }
 
     // MARK: - Fast path: orphaned helper
 
-    func testOrphanedHelperAtThresholdIsKilledAtOnce() {
-        var w = UAWatchdog()
-        let s = scan(&w, line(32329, ppid: 1, cpu: "80.0", helper))
-        XCTAssertEqual(s.kills, [UAWatchdog.Kill(pid: 32329, label: "UA Mixer Helper")])
-        XCTAssertTrue(s.audioPathHit)
-        XCTAssertEqual(s.messages, ["KILLED orphaned UA Mixer Helper pid=32329 cpu=80.0% (fast-path: PPID=1)"])
-        XCTAssertEqual(s.notification, "Killed runaway UA Mixer Helper — audio restored")
+    func testOrphanedHelperAtThresholdIsDueAtOnceAndRestartsTheEngine() {
+        let r = round(Hoes(), at: 0, [p(32329, ppid: 1, cpu: 80.0, helper)], rules: rules)
+        XCTAssertEqual(r.due.map(\.pid), [32329])
+        XCTAssertEqual(r.due.first?.ruleID, "ua.helper")
+        XCTAssertEqual(r.due.first?.name, "UA Mixer Helper")
+        XCTAssertEqual(rule("ua.helper").restart(after: helper), "com.uaudio.ua_mixer_engine")
+        XCTAssertEqual(UAWatchdog.killMessage(r.due[0], rule: rule("ua.helper")),
+                       "KILLED orphaned UA Mixer Helper pid=32329 cpu=80.0% (fast-path: PPID=1)")
     }
 
     func testOrphanedHelperBelowFastBarIsLeftAlone() {
-        var w = UAWatchdog()
-        let s = scan(&w, line(1, ppid: 1, cpu: "79.9", helper))
-        XCTAssertEqual(s, UAWatchdog.Scan())
-        XCTAssertNil(s.notification)
+        XCTAssertEqual(feed(Hoes(), through: 300, [p(1, ppid: 1, cpu: 79.9, helper)]).due, [])
     }
 
-    func testParentedHelperTakesTheGeneralPath() {
-        var w = UAWatchdog()
-        let first = scan(&w, line(7, ppid: 68313, cpu: "95.0", helper))
-        XCTAssertEqual(first.kills, [])
-        XCTAssertEqual(first.messages, ["WARN UA Mixer Helper pid=7 cpu=95.0% (tick 1/2 >=90%)"])
-        let second = scan(&w, line(7, ppid: 68313, cpu: "96.0", helper))
-        XCTAssertEqual(second.kills, [UAWatchdog.Kill(pid: 7, label: "UA Mixer Helper")])
-        XCTAssertTrue(second.audioPathHit)   // a helper is on the audio path either way
+    func testParentedHelperTakesTheGeneralPathAndStillRestarts() {
+        let h = Hoes()
+        XCTAssertEqual(feed(h, through: 30, [p(7, ppid: 68313, cpu: 95, helper)]).due, [])
+        let r = round(h, at: 60, [p(7, ppid: 68313, cpu: 96, helper)], rules: rules)
+        XCTAssertEqual(r.due.map(\.ruleID), ["ua.other"])
+        XCTAssertEqual(rule("ua.other").restart(after: helper), "com.uaudio.ua_mixer_engine")   // on the audio path
+        XCTAssertEqual(UAWatchdog.killMessage(r.due[0], rule: rule("ua.other")),
+                       "KILLED runaway UA Mixer Helper pid=7 cpu=96.0% (>=90% x 3 ticks)")
     }
 
-    // MARK: - Engine: 98 % across 3 ticks
+    // MARK: - Engine: 98 % for 2 minutes
 
-    func testEngineNeedsThreeTicksAtNinetyEight() {
-        var w = UAWatchdog()
-        XCTAssertEqual(scan(&w, line(1315, cpu: "101.8", engine)).messages,
-                       ["WARN UA Mixer Engine pid=1315 cpu=101.8% (tick 1/3 >=98%)"])
-        XCTAssertEqual(scan(&w, line(1315, cpu: "103.2", engine)).messages,
-                       ["WARN UA Mixer Engine pid=1315 cpu=103.2% (tick 2/3 >=98%)"])
-        let s = scan(&w, line(1315, cpu: "101.0", engine))
-        XCTAssertEqual(s.messages, ["KILLED runaway UA Mixer Engine pid=1315 cpu=101.0% (>=98% x 3 ticks)"])
-        XCTAssertEqual(s.kills, [UAWatchdog.Kill(pid: 1315, label: "UA Mixer Engine")])
-        XCTAssertTrue(s.audioPathHit)
-        XCTAssertEqual(s.notification, "Killed runaway UA Mixer Engine — audio restored")
+    func testEngineNeedsTwoMinutesAtNinetyEight() {
+        let h = Hoes()
+        XCTAssertEqual(feed(h, through: 90, [p(1315, cpu: 101.8, engine)]).due, [])
+        let r = round(h, at: 120, [p(1315, cpu: 101.0, engine)], rules: rules)
+        XCTAssertEqual(r.due.map(\.ruleID), ["ua.engine"])
+        XCTAssertEqual(rule("ua.engine").restart(after: engine), "com.uaudio.ua_mixer_engine")
+        XCTAssertEqual(UAWatchdog.killMessage(r.due[0], rule: rule("ua.engine")),
+                       "KILLED runaway UA Mixer Engine pid=1315 cpu=101.0% (>=98% x 5 ticks)")
     }
 
     func testEngineBelowNinetyEightIsIgnored() {
-        // The script compares the integer part: 97.9 is 97.
-        var w = UAWatchdog()
-        for _ in 0..<5 { XCTAssertEqual(scan(&w, line(1315, cpu: "97.9", engine)), UAWatchdog.Scan()) }
+        // The whole percent is compared: 97.9 is 97. The general UA rule never applies to the engine.
+        XCTAssertEqual(feed(Hoes(), through: 600, [p(1315, cpu: 97.9, engine)]).due, [])
     }
 
-    // MARK: - Everything else: 90 % across 2 ticks
+    // MARK: - Everything else: 90 % for 1 minute
 
-    func testOtherUAProcessNeedsTwoTicksAtNinety() {
-        var w = UAWatchdog()
-        XCTAssertEqual(scan(&w, line(1053, cpu: "90.0", meter)).messages,
-                       ["WARN UAD Meter pid=1053 cpu=90.0% (tick 1/2 >=90%)"])
-        let s = scan(&w, line(1053, cpu: "100.0", meter))
-        XCTAssertEqual(s.messages, ["KILLED runaway UAD Meter pid=1053 cpu=100.0% (>=90% x 2 ticks)"])
-        XCTAssertFalse(s.audioPathHit)
-        XCTAssertEqual(s.notification, "Killed runaway UAD Meter")
+    func testOtherUAProcessNeedsAMinuteAtNinetyAndNoRestart() {
+        let h = Hoes()
+        XCTAssertEqual(feed(h, through: 30, [p(1053, cpu: 90, meter)]).due, [])
+        let r = round(h, at: 60, [p(1053, cpu: 100, meter)], rules: rules)
+        XCTAssertEqual(r.due.map(\.name), ["UAD Meter"])
+        XCTAssertNil(rule("ua.other").restart(after: meter))
     }
 
     func testNonUAProcessIsNeverTouched() {
-        var w = UAWatchdog()
-        for _ in 0..<3 {
-            XCTAssertEqual(scan(&w, line(9, ppid: 1, cpu: "100.0", "/Applications/Safari.app/Contents/MacOS/Safari")),
-                           UAWatchdog.Scan())
-        }
+        XCTAssertEqual(feed(Hoes(), through: 600, [p(9, ppid: 1, cpu: 100, "/Applications/Safari.app/Contents/MacOS/Safari")]).due, [])
     }
 
-    // MARK: - Counting
-
-    func testCountResetsWhenASampleDrops() {
-        var w = UAWatchdog()
-        _ = scan(&w, line(5, cpu: "95.0", connect))
-        _ = scan(&w, line(5, cpu: "10.0", connect))
-        XCTAssertEqual(w.pending, [:])
-        let s = scan(&w, line(5, cpu: "95.0", connect))
-        XCTAssertEqual(s.kills, [])
-        XCTAssertEqual(s.messages, ["WARN UA Connect pid=5 cpu=95.0% (tick 1/2 >=90%)"])
+    func testAStreakResetsWhenASampleDrops() {
+        let h = Hoes()
+        _ = round(h, at: 0, [p(5, cpu: 95, connect)], rules: rules)
+        _ = round(h, at: 30, [p(5, cpu: 95, connect)], rules: rules)
+        _ = round(h, at: 60, [p(5, cpu: 10, connect)], rules: rules)
+        XCTAssertEqual(feed(h, from: 90, through: 120, [p(5, cpu: 95, connect)]).due, [])
+        XCTAssertEqual(round(h, at: 150, [p(5, cpu: 95, connect)], rules: rules).due.map(\.pid), [5])
     }
 
-    func testCountsArePerPID() {
-        var w = UAWatchdog()
-        _ = scan(&w, line(5, cpu: "95.0", connect))
-        let s = scan(&w, line(6, cpu: "95.0", connect))   // pid 5 is gone; 6 starts over
-        XCTAssertEqual(s.kills, [])
-        XCTAssertEqual(w.pending, [6: 1])
+    func testPausedBuiltInsDoNothing() {
+        let paused = rules.map { r -> HoeRule in var r = r; r.paused = true; return r }
+        XCTAssertEqual(round(Hoes(), at: 0, [p(1, ppid: 1, cpu: 100, helper)], rules: paused).due, [])
     }
 
-    func testAKillClearsTheCount() {
-        var w = UAWatchdog()
-        _ = scan(&w, line(5, cpu: "95.0", connect))
-        _ = scan(&w, line(5, cpu: "95.0", connect))
-        XCTAssertEqual(w.pending, [:])
-    }
-
-    func testResetForgetsPendingCounts() {
-        var w = UAWatchdog()
-        _ = scan(&w, line(5, cpu: "95.0", connect))
-        w.reset()
-        XCTAssertEqual(scan(&w, line(5, cpu: "95.0", connect)).kills, [])
-    }
-
-    func testNotificationNamesTheFirstKillAndAudioPathWins() {
-        var w = UAWatchdog()
-        _ = scan(&w, line(5, cpu: "95.0", meter))
-        let s = scan(&w, line(5, cpu: "95.0", meter), line(6, ppid: 1, cpu: "99.0", helper))
-        XCTAssertEqual(s.kills.map(\.label), ["UAD Meter", "UA Mixer Helper"])
-        XCTAssertTrue(s.audioPathHit)
-        XCTAssertEqual(s.notification, "Killed runaway UAD Meter — audio restored")
+    func testNotification() {
+        XCTAssertEqual(UAWatchdog.notification(label: "UA Mixer Engine", audioRestored: true), "Killed runaway UA Mixer Engine — audio restored")
+        XCTAssertEqual(UAWatchdog.notification(label: "UAD Meter", audioRestored: false), "Killed runaway UAD Meter")
     }
 
     // MARK: - The old launchd agent

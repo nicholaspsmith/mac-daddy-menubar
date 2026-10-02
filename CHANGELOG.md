@@ -10,8 +10,8 @@ Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 
 ## [Unreleased]
 
-- New **UA Watchdog** duty, shown only when Universal Audio software is installed: every minute it kills wedged Universal Audio processes (an orphaned UA Mixer Helper at once, the UA Mixer Engine after 3 minutes at 98% CPU, anything else UA after 2 minutes at 90%), kickstarts the mixer engine so Apollo audio comes back, and notifies you. The menu shows the last kill and today's count, with **Open Log**
-- Replaces the `ua-watchdog` launchd agent from Apollo Monitor: the installer and Mac Daddy retire it, its log carries on, and if you had disabled it the duty starts off. Unlike the agent, it only runs while Mac Daddy is running
+- New **Hoes** duty: lists third-party processes working the CPU (80% or more for 2 minutes) with **End** and **Ignore**. When you force-quit one while it's still hot, Mac Daddy suggests a rule to end it for you next time, guessing the threshold and duration from what it saw; **Yes**, **Adjust** or **No**. Force-quit it again and the rule tightens. Rules can be adjusted, paused, set to restart a launchd job, or skipped while the app is in front. macOS's own programs are never touched
+- The `ua-watchdog` launchd agent from Apollo Monitor is now three built-in Hoes rules (shown only when Universal Audio software is installed): an orphaned UA Mixer Helper at 80% is killed at once, the UA Mixer Engine at 98% for 2 minutes, anything else UA at 90% for 1 minute, and the mixer engine is kickstarted so Apollo audio comes back. The installer and Mac Daddy retire the agent, its log carries on, and if you had disabled it the rules start paused. Unlike the agent, they only run while Mac Daddy is running
 
 ## [1.3.0] - 2026-10-02
 
