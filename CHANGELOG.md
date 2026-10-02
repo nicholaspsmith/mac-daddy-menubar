@@ -8,6 +8,11 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [Unreleased]
+
+- New **UA Watchdog** duty, shown only when Universal Audio software is installed: every minute it kills wedged Universal Audio processes (an orphaned UA Mixer Helper at once, the UA Mixer Engine after 3 minutes at 98% CPU, anything else UA after 2 minutes at 90%), kickstarts the mixer engine so Apollo audio comes back, and notifies you. The menu shows the last kill and today's count, with **Open Log**
+- Replaces the `ua-watchdog` launchd agent from Apollo Monitor: the installer and Mac Daddy retire it, its log carries on, and if you had disabled it the duty starts off. Unlike the agent, it only runs while Mac Daddy is running
+
 ## [1.3.0] - 2026-10-02
 
 - feat: once a minute Menu Pimp grins, showing white teeth with a gold gleam sweeping across them, in turn with the other animated Menumon mascots

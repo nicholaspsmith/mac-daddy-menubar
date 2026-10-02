@@ -30,6 +30,7 @@ final class App: NSObject, NSApplicationDelegate {
     private let tracker = TrackerKiller()
     private lazy var downloads = DownloadSweeper(notifier: notifier)
     private lazy var lostSouls = LostSoulsDuty(notifier: notifier)
+    private lazy var uaWatchdog = UAWatchdogDuty(notifier: notifier)
     private var lastFlourish: (Flourish, Date)?
     /// Once a minute, in his turn with the other animated mascots, he grins and
     /// a gold gleam crosses his teeth. Progress 0...1, linear; 0 when not grinning.
@@ -43,12 +44,13 @@ final class App: NSObject, NSApplicationDelegate {
         self?.redraw()
     })
 
-    private var cleanupDuties: [Duty] { [tracker, downloads, lostSouls] }
-    private var allDuties: [Duty] { [processWatch, tracker, downloads, lostSouls] }
+    private var cleanupDuties: [Duty] { [tracker, downloads, lostSouls, uaWatchdog] }
+    private var allDuties: [Duty] { [processWatch, tracker, downloads, lostSouls, uaWatchdog] }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         migrate()
         retireReaperAgent()
+        retireUAWatchdogAgent()
         notifier.requestAuthorization()
         for d in allDuties {
             d.onSweep = { [weak self] f in self?.flourish(f) }
@@ -94,6 +96,28 @@ final class App: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// The UA watchdog used to be a launchd agent; UAWatchdogDuty does its job now.
+    /// The first time, a deliberate "off" (`launchctl disable`, which outlives the
+    /// plist) carries over to the duty. Then the agent is booted out, as a backstop
+    /// for an install that still has it loaded.
+    private func retireUAWatchdogAgent() {
+        let label = UAWatchdogDuty.agentLabel, carriedKey = "uaWatchdog.agentStateCarried"
+        let carried = UserDefaults.standard.bool(forKey: carriedKey)
+        DispatchQueue.global(qos: .utility).async {
+            let domain = "gui/\(getuid())"
+            if !carried, let text = Shell.run("/bin/launchctl", ["print-disabled", domain]) {
+                let off = UAWatchdog.isDisabled(label, printDisabled: text)
+                DispatchQueue.main.async { [weak self] in
+                    if off { self?.uaWatchdog.enabled = false }
+                    UserDefaults.standard.set(true, forKey: carriedKey)
+                    log.notice("ua-watchdog agent was \(off ? "disabled: duty off" : "enabled", privacy: .public)")
+                }
+            }
+            let out = Shell.run("/bin/launchctl", ["bootout", "\(domain)/\(label)"])
+            log.notice("ua-watchdog agent bootout: \(out == nil ? "not loaded" : "unloaded", privacy: .public)")
+        }
+    }
+
     private func flourish(_ f: Flourish) {
         lastFlourish = (f, Date())
         redraw()
@@ -104,7 +128,7 @@ final class App: NSObject, NSApplicationDelegate {
         guard let controller else { return }
         let mood = Mood.compute(
             fraction: processWatch.fraction,
-            anyCleanupEnabled: tracker.enabled || downloads.enabled || lostSouls.enabled,
+            anyCleanupEnabled: tracker.enabled || downloads.enabled || lostSouls.enabled || uaWatchdog.isActive,
             lastFlourish: lastFlourish, now: Date())
         switch IconStyle.current {
         case .character:
@@ -141,6 +165,7 @@ final class App: NSObject, NSApplicationDelegate {
         tracker.addMenuItems(to: menu)
         downloads.addMenuItems(to: menu)
         lostSouls.addMenuItems(to: menu)
+        uaWatchdog.addMenuItems(to: menu)
         menu.addItem(.separator())
 
         let icon = NSMenuItem(title: "Icon", action: nil, keyEquivalent: "")
