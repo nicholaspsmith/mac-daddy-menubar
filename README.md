@@ -22,6 +22,8 @@ The menu-bar icon is Menu Pimp, the Mac Daddy of the menu bar: his illustrated m
 
 Once a minute he grins: his smile widens to show white teeth and a gold gleam sweeps across them, 550 ms and linear. When several Menumon mascots are running they take turns, a second apart: Archimedes (Claude Usage), Menu Pimp (Mac Daddy), Carol (SoundChain), Caveepyan (VPN & DNS), then Armonitor (Monitor Lizard), counting only the ones that are running. Skipped when Reduce Motion is on.
 
+![Menu Pimp grinning, a gold gleam crossing his teeth](docs/animation.png)
+
 Prefer a plain symbol? **menu ▸ Icon ▸ Plain symbol**.
 
 ## Menu
