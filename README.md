@@ -7,11 +7,11 @@
 Keeps your Mac in line: kills Apple's media trackers, trashes stale downloads, finds orphaned processes burning CPU, and sweats when your process count climbs. Built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit).
 
-**Version 1.2.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
+**Version 1.3.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
-The menu-bar icon is Mac Daddy's illustrated mascot itself — the same art as the app icon, shrunk — with the live part painted on top. His hat is your process count:
+The menu-bar icon is Menu Pimp, the Mac Daddy of the menu bar: his illustrated mascot itself — the same art as the app icon, shrunk — with the live part painted on top. His hat is your process count:
 
 - **Cool, purple hat** — plenty of headroom
 - **Sweating, amber hat** — the process count is climbing toward the per-user limit; a drop of sweat
@@ -19,6 +19,8 @@ The menu-bar icon is Mac Daddy's illustrated mascot itself — the same art as t
 - **Hat tip** — for two seconds after the media-tracker killer or Lost Souls ends something
 - **Chain glint** — for two seconds after the Downloads sweep trashes files
 - **Asleep, eyes closed, grey, with a "z"** — every cleanup is paused (the hat keeps its warning colour)
+
+Once a minute he grins: his smile widens to show white teeth and a gold gleam sweeps across them, 550 ms and linear. When several Menumon mascots are running they take turns, a second apart: Archimedes (Claude Usage), Menu Pimp (Mac Daddy), Carol (SoundChain), Caveepyan (VPN & DNS), then Armonitor (Monitor Lizard), counting only the ones that are running. Skipped when Reduce Motion is on.
 
 Prefer a plain symbol? **menu ▸ Icon ▸ Plain symbol**.
 
