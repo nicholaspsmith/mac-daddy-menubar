@@ -152,7 +152,7 @@ final class ProcessWatch: NSObject, Duty {
             menu.addItem(indented(h))
         }
 
-        let spawn = NSMenuItem(title: "Top Spawners", action: nil, keyEquivalent: "")
+        let spawn = NSMenuItem(title: "Skanky Ass Hoes", action: nil, keyEquivalent: "")
         let sm = NSMenu()
         let spawners = topSpawners(latestProcs, topN: 10)
         if spawners.isEmpty { sm.addItem(NSMenuItem(title: "(none)", action: nil, keyEquivalent: "")) }

@@ -7,7 +7,7 @@
 import AppKit
 import Foundation
 
-// Window that opens when you click a Top Spawners entry. Re-runs ps every 2s
+// Window that opens when you click a Skanky Ass Hoes (top spawners) entry. Re-runs ps every 2s
 // while open so the descendant list and elapsed times stay live; closes itself
 // once it can't find the target PID anymore (the process exited).
 final class ProcessDetailWindowController: NSWindowController, NSWindowDelegate {

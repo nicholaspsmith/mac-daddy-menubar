@@ -11,6 +11,7 @@ Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 ## [Unreleased]
 
 - The menu is shorter: Media Tracking, Downloads, Lost Souls and Hoes are each one summary line ("Lost Souls — 2 wandering") with their controls in a submenu. A line goes bold when something is waiting on you and red when that duty is failing. Processes stays at the top, and its Zombies line only appears when there are some
+- Top Spawners is now called Skanky Ass Hoes
 
 ## [1.4.0] - 2026-10-02
 
