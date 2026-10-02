@@ -8,7 +8,7 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
-## [Unreleased]
+## [1.5.0] - 2026-10-02
 
 - New **Mode** setting (menu ▸ Mode) in place of the Icon picker. **Pimp Mode**, the default, shows Menu Pimp and speaks his language everywhere — menus, notifications, alerts and the process window: Hoes (CPU Hogs) are on the clock (running hot), Street Walkers (Lost Souls) are on the street (wandering), the busiest spawners are Skanky Ass Hoes (Top Spawners), and anything ended gets a Pimp Slap (Kill): Pimp Slap Now, Pimp Slap Hard (Force Quit), Restart After Pimp Slap, Pimp Slap Automatically (Banish Automatically), "Auto pimp slap …?" suggestions, "Pimp slapped runaway …" and the UA pimp-slap counts. **Normal Mode** shows the plain symbol and uses the standard terms in parentheses above. If you had picked the plain symbol icon, you start in Normal Mode. Log files read the same in either mode
 - The menu is shorter: Media Tracking, Downloads, Street Walkers and Hoes are each one summary line ("Street Walkers — 2 on the street") with their controls in a submenu. A line goes bold when something is waiting on you and red when that duty is failing. Processes stays at the top, and its Zombies line only appears when there are some

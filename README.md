@@ -7,7 +7,7 @@
 Keeps your Mac in line: pimp slaps (kills) Apple's media trackers, trashes stale downloads, finds Street Walkers (Lost Souls) — your orphaned processes burning CPU — learns which Hoes (CPU Hogs) you force-quit and pimp slaps them for you, and sweats when your process count climbs. All of that in Pimp Mode; [Normal Mode](#mode) says it plainly. Built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit).
 
-**Version 1.4.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
+**Version 1.5.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
