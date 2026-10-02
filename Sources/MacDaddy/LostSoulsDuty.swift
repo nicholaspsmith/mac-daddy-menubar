@@ -117,12 +117,13 @@ final class LostSoulsDuty: NSObject, Duty {
         for s in fresh {
             log.notice("lost soul: \(s.name, privacy: .public) [\(s.pid)] \(Int(s.meanCPU))% for \(s.minutes) min")
         }
+        let terms = terms
         if fresh.count == 1, let s = fresh.first {
-            notifier.post(title: "Lost soul",
-                          body: "\(s.name) (pid \(s.pid)) has been burning \(Self.pct(s))% CPU for \(s.minutes) min with no parent")
+            notifier.post(title: terms.lostSoulFound,
+                          body: terms.lostSoulBody(name: s.name, pid: s.pid, cpu: Self.pct(s), minutes: s.minutes))
         } else if fresh.count > 1 {
-            notifier.post(title: "\(fresh.count) lost souls",
-                          body: "Orphaned and burning CPU: " + fresh.map { "\($0.name) (\(Self.pct($0))%)" }.joined(separator: ", "))
+            notifier.post(title: terms.lostSoulsFound(fresh.count),
+                          body: terms.lostSoulsBody(fresh.map { "\($0.name) (\(Self.pct($0))%)" }))
         }
         if autoBanish {
             var ended: [LostSouls.Soul] = []
@@ -131,10 +132,10 @@ final class LostSoulsDuty: NSObject, Duty {
                 if end(s) == .ended { ended.append(s) }
             }
             if ended.count == 1, let s = ended.first {
-                notifier.post(title: "Lost soul banished", body: "Ended \(s.name) (pid \(s.pid)) after 30 min at \(Self.pct(s))% CPU")
+                notifier.post(title: terms.lostSoulBanished, body: terms.banished(name: s.name, pid: s.pid, cpu: Self.pct(s)))
             } else if ended.count > 1 {
-                notifier.post(title: "\(ended.count) lost souls banished",
-                              body: "Ended " + ended.map { "\($0.name) (pid \($0.pid))" }.joined(separator: ", "))
+                notifier.post(title: terms.lostSoulsBanished(ended.count),
+                              body: terms.banishedMany(ended.map { "\($0.name) (pid \($0.pid))" }))
             }
         }
     }
@@ -166,13 +167,13 @@ final class LostSoulsDuty: NSObject, Duty {
         switch Self.verify(s) {
         case nil: return .gone
         case false?:
-            setError("\(s.name) changed — not ended", s)
+            setError(terms.changed(name: s.name), s)
             return .changed
         case true?: break
         }
         let pid = pid_t(s.pid)
         guard kill(pid, SIGTERM) == 0 else {
-            if errno == EPERM { setError("Not allowed to end \(s.name) [\(s.pid)]", s); return .denied }
+            if errno == EPERM { setError(terms.notAllowed(name: s.name, pid: s.pid), s); return .denied }
             return .gone   // ESRCH: already gone — not an error
         }
         clearError()
@@ -182,19 +183,19 @@ final class LostSoulsDuty: NSObject, Duty {
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
             guard Self.verify(s) == true else { return }   // exited, or the PID is someone else's now
             if kill(pid, SIGKILL) == 0 { log.notice("SIGKILLed lost soul [\(s.pid)]") }
-            else if errno == EPERM, let self, gen == self.generation { self.setError("Not allowed to end \(s.name) [\(s.pid)]", s) }
+            else if errno == EPERM, let self, gen == self.generation { self.setError(terms.notAllowed(name: s.name, pid: s.pid), s) }
         }
         return .ended
     }
 
     var title: String {
-        guard enabled else { return "Lost Souls — Off" }
-        return current.isEmpty ? "Lost Souls — none wandering" : "Lost Souls — \(current.count) wandering"
+        terms.lostSoulsTitle(enabled: enabled, count: current.count)
     }
     var warning: String? { lastError }
     var needsAttention: Bool { enabled && !current.isEmpty }
 
     func addMenuItems(to menu: NSMenu) {
+        let terms = terms
         warningItems().forEach(menu.addItem)
         let toggle = NSMenuItem(title: "Enabled", action: #selector(toggleEnabled), keyEquivalent: "")
         toggle.target = self; toggle.state = enabled ? .on : .off
@@ -205,9 +206,9 @@ final class LostSoulsDuty: NSObject, Duty {
             let row = NSMenuItem(title: "\(s.name) [\(s.pid)]  —  \(Self.pct(s))% for \(s.minutes) min",
                                  action: nil, keyEquivalent: "")
             let sub = NSMenu()
-            let end = NSMenuItem(title: "End", action: #selector(endSoul(_:)), keyEquivalent: "")
+            let end = NSMenuItem(title: terms.end, action: #selector(endSoul(_:)), keyEquivalent: "")
             end.target = self; end.representedObject = Self.key(s)
-            let spare = NSMenuItem(title: "Spare", action: #selector(spareSoul(_:)), keyEquivalent: "")
+            let spare = NSMenuItem(title: terms.spare, action: #selector(spareSoul(_:)), keyEquivalent: "")
             spare.target = self; spare.representedObject = Self.key(s)
             sub.addItem(end); sub.addItem(spare)
             row.submenu = sub
@@ -219,7 +220,7 @@ final class LostSoulsDuty: NSObject, Duty {
             menu.addItem(more)
         }
         menu.addItem(.separator())
-        let auto = NSMenuItem(title: "Banish Automatically", action: #selector(toggleAuto), keyEquivalent: "")
+        let auto = NSMenuItem(title: terms.banishAutomatically, action: #selector(toggleAuto), keyEquivalent: "")
         auto.target = self; auto.state = autoBanish ? .on : .off
         menu.addItem(auto)
     }

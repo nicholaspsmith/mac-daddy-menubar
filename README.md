@@ -4,19 +4,19 @@
 
 <p align="center">Part of <strong><a href="https://menumon.nicksmith.software">Menumon</a></strong>.</p>
 
-Keeps your Mac in line: kills Apple's media trackers, trashes stale downloads, finds orphaned processes burning CPU, learns which CPU hogs you force-quit and ends them for you, and sweats when your process count climbs. Built on
+Keeps your Mac in line: pimp slaps (kills) Apple's media trackers, trashes stale downloads, finds Street Walkers (Lost Souls) — your orphaned processes burning CPU — learns which Hoes (CPU Hogs) you force-quit and pimp slaps them for you, and sweats when your process count climbs. All of that in Pimp Mode; [Normal Mode](#mode) says it plainly. Built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit).
 
 **Version 1.4.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
-The menu-bar icon is Menu Pimp, the Mac Daddy of the menu bar: his illustrated mascot itself — the same art as the app icon, shrunk — with the live part painted on top. His hat is your process count:
+In Pimp Mode the menu-bar icon is Menu Pimp, the Mac Daddy of the menu bar: his illustrated mascot itself — the same art as the app icon, shrunk — with the live part painted on top. His hat is your process count:
 
 - **Cool, purple hat** — plenty of headroom
 - **Sweating, amber hat** — the process count is climbing toward the per-user limit; a drop of sweat
 - **Red-hot, red hat** — close to the limit: two drops of sweat
-- **Hat tip** — for two seconds after the media-tracker killer, Lost Souls or Hoes ends something
+- **Hat tip** — for two seconds after the media-tracker pimp slapper, Street Walkers or Hoes pimp slaps something
 - **Chain glint** — for two seconds after the Downloads sweep trashes files
 - **Asleep, eyes closed, grey, with a "z"** — every cleanup is paused (the hat keeps its warning colour)
 
@@ -24,23 +24,37 @@ Once a minute he grins: his smile widens to show white teeth and a gold gleam sw
 
 ![Menu Pimp grinning, a gold gleam crossing his teeth](docs/animation.png)
 
-Prefer a plain symbol? **menu ▸ Icon ▸ Plain symbol**.
+Prefer a plain symbol and plain words? **menu ▸ Mode ▸ Normal Mode** (see [Mode](#mode)).
 
 ## Menu
 
-Processes sits at the top as the status. Each other duty is one line summing it up ("Downloads — swept 10/1/26", "Hoes — 1 on the clock · 1 suggestion") with its controls in a submenu; the line goes bold when something is waiting on you and red when the duty is failing.
+Processes sits at the top as the status. Each other duty is one line summing it up ("Downloads — swept 10/1/26", "Hoes — 1 on the clock (running hot) · 1 suggestion") with its controls in a submenu; the line goes bold when something is waiting on you and red when the duty is failing.
 
 | Item | Purpose |
 |---|---|
-| Processes | live count against the per-UID limit, a two-minute sparkline, crash-looping processes, Skanky Ass Hoes (the processes with the most descendants; each opens a detail window), Zombies (when one of your own, non-system processes is holding zombies: "Quit `<parent>` to reap N", which asks before quitting it), Open Activity Monitor |
-| Media Tracking ▸ Enabled / Pimp Slap Now / Interval / Processes | kills Apple's media analysis daemons every 5 / 15 / 30 / 60 s; one toggle per daemon |
+| Processes | live count against the per-UID limit, a two-minute sparkline, crash-looping processes, Skanky Ass Hoes (Top Spawners): the processes with the most descendants, each opening a detail window with **Pimp Slap** (SIGTERM) and **Pimp Slap Hard** (Force Quit), which asks first and sends SIGKILL; Zombies (when one of your own, non-system processes is holding zombies: "Pimp Slap `<parent>` to reap N", which asks before pimp slapping it); Open Activity Monitor |
+| Media Tracking ▸ Enabled / Pimp Slap Now / Interval / Processes | pimp slaps Apple's media analysis daemons every 5 / 15 / 30 / 60 s; one toggle per daemon |
 | Downloads ▸ Enabled / Sweep Now / Keep Files For / Open Log | checks every 30 minutes and sweeps at most once a day (once 24 h have passed since the last sweep), moving files older than 7 / 14 / 30 / 60 / 90 days from `~/Downloads` to the Trash (restorable, never a hard delete); Sweep Now runs one immediately |
-| Lost Souls ▸ Enabled / each soul ▸ End, Spare / Banish Automatically | samples your processes every 30 s; a *lost soul* is one of yours that launchd adopted (parent PID 1) and that averaged over 50% CPU for 10 minutes — a hung headless test run, a script whose terminal closed. Apps, launchd jobs, XPC services and app extensions (Safari tabs, virtual machines), macOS's own programs, helpers a background service or their own app is responsible for, normally orphaned daemons (cfprefsd, mds, tmux, ollama, …) and souls you Spare are left out. Time asleep doesn't count. Mac Daddy notifies you once and lists it as `name [pid] — X% for M min` (the 8 hungriest, then "and N more…"; "None wandering" when there are none); **End** checks it is still the same process, sends SIGTERM, then SIGKILL after 5 s. Nothing is ended unless you click End or turn on **Banish Automatically** (off by default), which ends a soul once it has qualified continuously for 30 minutes |
-| Hoes ▸ Enabled / each hoe ▸ End, Ignore / suggestions ▸ Yes, Adjust, No / Rules / Ignored / Open Log | samples your processes every 30 s; a *hoe* is a third-party one (anything not signed by Apple as part of macOS) working the CPU at 80% or more for 2 minutes. They are listed as `name [pid] — X% for M min` with **End** and **Ignore**; being a hoe alone sends no notification. When a hoe vanishes while still hot — you force-quit it, or ended it here — Mac Daddy guesses a rule (its mean CPU less 10, to the nearest 5, within 80–98%; for half as long as it had run hot, 2–30 min) and asks once: "Auto-kill spin? (≥90% for 5 min)". Activity Monitor or the Force Quit window in front, or launchd restarting it, count as extra evidence. **Yes** makes the rule, **Adjust** changes the guess first, **No** never asks again for that program. Force-quit it again and its rule tightens (and says so). Under **Rules** each rule has Threshold, Duration (or on sight), Restart After Pimp Slap (when its launchd job is known), Skip While In Front (on for apps), Paused and Delete. A rule ends a process with SIGTERM, then SIGKILL after 5 s, and notifies you. Never touched: macOS's own programs, Mac Daddy, and anything Ignored (un-ignore it under **Ignored**). On a Mac with Universal Audio software the old UA watchdog is three built-in rules, killing at once and restarting the mixer engine so Apollo audio comes back: an orphaned `UA Mixer Helper` at 80% on sight, `UA Mixer Engine` at 98% for 2 min, any other UA process at 90% for 1 min. Built-ins can be adjusted or paused, not deleted; they also log to `~/.local/state/ua-watchdog.log`, summarised at the foot of **Rules**. Everything else logs to `~/Library/Logs/MacDaddy/hoes.log`. Hoes only runs while Mac Daddy is running |
-| Icon | Mac Daddy or plain symbol |
+| Street Walkers ▸ Enabled / each street walker ▸ Pimp Slap, Spare / Pimp Slap Automatically (Banish Automatically) | samples your processes every 30 s; a *street walker* is one of yours that launchd adopted (parent PID 1) and that averaged over 50% CPU for 10 minutes — a hung headless test run, a script whose terminal closed. Apps, launchd jobs, XPC services and app extensions (Safari tabs, virtual machines), macOS's own programs, helpers a background service or their own app is responsible for, normally orphaned daemons (cfprefsd, mds, tmux, ollama, …) and street walkers you Spare are left out. Time asleep doesn't count. Mac Daddy notifies you once and lists it as `name [pid] — X% for M min` (the 8 hungriest, then "and N more…"); the line reads "Street Walkers — 2 on the street (wandering)". **Pimp Slap** checks it is still the same process, sends SIGTERM, then SIGKILL after 5 s. Nothing is pimp slapped unless you click Pimp Slap or turn on **Pimp Slap Automatically** (off by default), which pimp slaps a street walker once it has qualified continuously for 30 minutes |
+| Hoes ▸ Enabled / each hoe ▸ Pimp Slap, Ignore / suggestions ▸ Yes, Adjust, No / Rules / Ignored / Open Log | samples your processes every 30 s; a *hoe* is a third-party one (anything not signed by Apple as part of macOS) on the clock at 80% CPU or more for 2 minutes. They are listed as `name [pid] — X% for M min` with **Pimp Slap** and **Ignore**; being a hoe alone sends no notification. When a hoe vanishes while still hot — you force-quit it, or pimp slapped it here — Mac Daddy guesses a rule (its mean CPU less 10, to the nearest 5, within 80–98%; for half as long as it had run hot, 2–30 min) and asks once: "Auto pimp slap spin? (≥90% for 5 min)". Activity Monitor or the Force Quit window in front, or launchd restarting it, count as extra evidence. **Yes** makes the rule, **Adjust** changes the guess first, **No** never asks again for that program. Force-quit it again and its rule tightens (and says so). Under **Rules** each rule has Threshold, Duration (or on sight), Restart After Pimp Slap (when its launchd job is known), Skip While In Front (on for apps), Paused and Delete. A rule pimp slaps a process with SIGTERM, then SIGKILL after 5 s, and notifies you. Never touched: macOS's own programs, Mac Daddy, and anything Ignored (un-ignore it under **Ignored**). On a Mac with Universal Audio software the old UA watchdog is three built-in rules, pimp slapping with SIGKILL at once and restarting the mixer engine so Apollo audio comes back: an orphaned `UA Mixer Helper` at 80% on sight, `UA Mixer Engine` at 98% for 2 min, any other UA process at 90% for 1 min. Built-ins can be adjusted or paused, not deleted; they also log to `~/.local/state/ua-watchdog.log`, summarised at the foot of **Rules**. Everything else logs to `~/Library/Logs/MacDaddy/hoes.log`. Hoes only runs while Mac Daddy is running |
+| Mode ▸ Pimp Mode / Normal Mode | Menu Pimp and his words, or a plain symbol and standard terms — see [Mode](#mode) |
 | Start at Login | SMAppService — no launchd agent |
 
 A failing duty's line turns red, and its submenu starts with the reason. Settings persist in `defaults` domain `com.nicholaspsmith.MacDaddy`, and are carried over from Media Tracking Killer and Download Recycler on first launch.
+
+## Mode
+
+**Pimp Mode** is the default: Menu Pimp is the icon and everything Mac Daddy says uses his words. **Normal Mode** shows a plain sparkles symbol in the same mood colours and uses standard terms. Switching under **menu ▸ Mode** takes effect at once — the icon, the next menu, notifications and the process window. If you had picked the plain symbol under the old Icon menu, you start in Normal Mode. Log files read the same in either mode.
+
+| Pimp Mode | Normal Mode |
+|---|---|
+| Hoes, on the clock | CPU Hogs, running hot |
+| Street Walkers, on the street, with no pimp | Lost Souls, wandering, with no parent |
+| Skanky Ass Hoes | Top Spawners |
+| Pimp Slap, pimp slapped | End / Kill / Quit, ended / killed |
+| Pimp Slap Hard | Force Quit |
+| Pimp Slap Now, Restart After Pimp Slap, Pimp Slap Automatically | Kill Now, Restart After Kill, Banish Automatically |
+| Auto pimp slap …?, Last pimp slap, Pimp slaps today | Auto-kill …?, Last kill, Kills today |
 
 ## What it replaced
 
@@ -51,7 +65,7 @@ A failing duty's line turns red, and its submenu starts with the reason. Setting
 | Media Tracking Killer | quits it, turns its login item off, removes its `~/Applications` link |
 | Download Recycler | quits it, turns its login item off, removes its `~/Applications` link |
 | Process Monitor | quits it, turns its login item off, removes its `~/Applications` link |
-| godot-headless-reaper (launchd agent) | boots it out, removes its plist, moves its script to the Trash (Lost Souls does its job, for any program) |
+| godot-headless-reaper (launchd agent) | boots it out, removes its plist, moves its script to the Trash (Street Walkers does its job, for any program) |
 | ua-watchdog (launchd agent, from Apollo Monitor) | boots it out, removes its plist and its heartbeat and state files, moves its script to the Trash, keeps its log (the built-in UA rules in Hoes carry on writing it). If you had disabled the agent, those rules start paused |
 
 ## Requirements
@@ -114,7 +128,7 @@ colour, and cooperative hiding so no icon strands another.
 | [Apollo Monitor](https://github.com/nicholaspsmith/apollo-monitor-menubar) | Apollo audio-interface monitor level |
 | [Battery Time](https://github.com/nicholaspsmith/battery-time-menubar) | Time remaining, power mode, and 24h usage |
 | [VPN & DNS](https://github.com/nicholaspsmith/vpn-dns-menubar) | A chameleon for Mullvad + Tailscale state, with a DNS watcher |
-| **Mac Daddy** | Process-count watch, media-tracker killer, Downloads sweeper, lost-soul finder and Hoes (learns which CPU hogs you force-quit, UA watchdog built in), in one app |
+| **Mac Daddy** | Process-count watch, media-tracker pimp slapper, Downloads sweeper, Street Walkers and Hoes (learns which ones you force-quit; UA watchdog built in), in one app |
 | [KeyLight](https://github.com/nicholaspsmith/keylight-menubar) | Ctrl+brightness keys remapped to keyboard backlight |
 | [MacRecorder](https://github.com/nicholaspsmith/MacRecorder) | Screen recording with system audio |
 | [Barn](https://github.com/nicholaspsmith/menubar-barn) | Sunset: macOS 26 and earlier only. Hid a block of status icons by width; on macOS 27 use System Settings ▸ Menu Bar |

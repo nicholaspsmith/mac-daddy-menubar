@@ -73,10 +73,10 @@ public enum UAWatchdogLog {
     }
 
     /// The menu's lines: the last kill and today's count, or "No kills yet".
-    public static func summary(_ text: String, now: Date) -> [String] {
-        guard let last = lastKill(text) else { return ["No pimp slaps yet"] }
-        return ["Last pimp slap: \(last.label), \(ago(now.timeIntervalSince(last.date)))",
-                "Pimp slaps today: \(killsToday(text, now: now))"]
+    public static func summary(_ text: String, now: Date, terms: Terms) -> [String] {
+        guard let last = lastKill(text) else { return [terms.noKillsYet] }
+        return [terms.lastKill(label: last.label, ago: ago(now.timeIntervalSince(last.date))),
+                terms.killsToday(killsToday(text, now: now))]
     }
 
     /// "KILLED [orphaned|runaway] <label> pid=…" → the label.

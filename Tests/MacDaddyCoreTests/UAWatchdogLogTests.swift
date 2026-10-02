@@ -97,8 +97,11 @@ final class UAWatchdogLogTests: XCTestCase {
 
     func testSummary() {
         let now = date("2026-08-01 11:02:00")
-        XCTAssertEqual(UAWatchdogLog.summary(sampleLog, now: now),
+        XCTAssertEqual(UAWatchdogLog.summary(sampleLog, now: now, terms: .pimp),
                        ["Last pimp slap: UA Mixer Helper, 2 h ago", "Pimp slaps today: 2"])
-        XCTAssertEqual(UAWatchdogLog.summary("", now: now), ["No pimp slaps yet"])
+        XCTAssertEqual(UAWatchdogLog.summary(sampleLog, now: now, terms: .normal),
+                       ["Last kill: UA Mixer Helper, 2 h ago", "Kills today: 2"])
+        XCTAssertEqual(UAWatchdogLog.summary("", now: now, terms: .pimp), ["No pimp slaps yet"])
+        XCTAssertEqual(UAWatchdogLog.summary("", now: now, terms: .normal), ["No kills yet"])
     }
 }

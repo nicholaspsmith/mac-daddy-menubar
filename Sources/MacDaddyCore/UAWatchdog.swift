@@ -59,8 +59,8 @@ public enum UAWatchdog {
         return "KILLED runaway \(d.name) pid=\(d.pid) cpu=\(d.cpu)% (>=\(rule.threshold)% x \(d.samples) ticks)"
     }
 
-    public static func notification(label: String, audioRestored: Bool) -> String {
-        "Pimp slapped runaway \(label)" + (audioRestored ? " — audio restored" : "")
+    public static func notification(label: String, audioRestored: Bool, terms: Terms) -> String {
+        terms.uaKill(label: label, audioRestored: audioRestored)
     }
 
     /// Whether `launchctl print-disabled gui/<uid>` lists `label` as disabled

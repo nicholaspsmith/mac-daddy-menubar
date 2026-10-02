@@ -10,9 +10,8 @@ Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 
 ## [Unreleased]
 
-- The menu is shorter: Media Tracking, Downloads, Lost Souls and Hoes are each one summary line ("Lost Souls — 2 wandering") with their controls in a submenu. A line goes bold when something is waiting on you and red when that duty is failing. Processes stays at the top, and its Zombies line only appears when there are some
-- Top Spawners is now called Skanky Ass Hoes
-- Kill is now Pimp Slap throughout the menus and notifications: Pimp Slap Now, Restart After Pimp Slap, "Auto pimp slap …?" suggestions, "Pimp slapped runaway …" and the UA pimp-slap counts. Log files keep their old KILLED lines
+- New **Mode** setting (menu ▸ Mode) in place of the Icon picker. **Pimp Mode**, the default, shows Menu Pimp and speaks his language everywhere — menus, notifications, alerts and the process window: Hoes (CPU Hogs) are on the clock (running hot), Street Walkers (Lost Souls) are on the street (wandering), the busiest spawners are Skanky Ass Hoes (Top Spawners), and anything ended gets a Pimp Slap (Kill): Pimp Slap Now, Pimp Slap Hard (Force Quit), Restart After Pimp Slap, Pimp Slap Automatically (Banish Automatically), "Auto pimp slap …?" suggestions, "Pimp slapped runaway …" and the UA pimp-slap counts. **Normal Mode** shows the plain symbol and uses the standard terms in parentheses above. If you had picked the plain symbol icon, you start in Normal Mode. Log files read the same in either mode
+- The menu is shorter: Media Tracking, Downloads, Street Walkers and Hoes are each one summary line ("Street Walkers — 2 on the street") with their controls in a submenu. A line goes bold when something is waiting on you and red when that duty is failing. Processes stays at the top, and its Zombies line only appears when there are some
 
 ## [1.4.0] - 2026-10-02
 

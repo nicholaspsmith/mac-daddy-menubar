@@ -11,17 +11,6 @@ import StatusItemKit
 
 private let log = Logger(subsystem: "com.nicholaspsmith.MacDaddy", category: "app")
 
-/// The icon: Mac Daddy himself, or a plain symbol in the same colours.
-enum IconStyle: String, CaseIterable {
-    case character, symbol
-    var title: String { self == .character ? "Mac Daddy" : "Plain Symbol" }
-    private static let key = "iconStyle"
-    static var current: IconStyle {
-        get { UserDefaults.standard.string(forKey: key).flatMap(IconStyle.init) ?? .character }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: key) }
-    }
-}
-
 final class App: NSObject, NSApplicationDelegate {
     private var controller: StatusItemController!
     private var yieldClient: YieldClient!
@@ -65,7 +54,7 @@ final class App: NSObject, NSApplicationDelegate {
         yieldClient = YieldClient(item: controller)
         yieldClient.start()
         minuteCue = MinuteCue { [weak self] in
-            guard IconStyle.current == .character else { return }
+            guard Mode.load(from: .standard) == .pimp else { return }
             self?.grinAnimation.start()
         }
         minuteCue.start()
@@ -79,6 +68,7 @@ final class App: NSObject, NSApplicationDelegate {
     }
 
     private func migrate() {
+        Mode.migrateIconStyle(in: .standard)
         let lines = SettingsMigration.run(
             target: UserDefaults.standard,
             tracker: UserDefaults(suiteName: SettingsMigration.trackerDomain),
@@ -130,8 +120,9 @@ final class App: NSObject, NSApplicationDelegate {
             fraction: processWatch.fraction,
             anyCleanupEnabled: tracker.enabled || downloads.enabled || lostSouls.enabled || hoes.enabled,
             lastFlourish: lastFlourish, now: Date())
-        switch IconStyle.current {
-        case .character:
+        // Pimp Mode is Menu Pimp himself; Normal Mode a plain symbol in the same colours.
+        switch Mode.load(from: .standard) {
+        case .pimp:
             let level = Self.level(mood.level), flourish = mood.flourish.map(Self.flourish)
             // The illustrated art ships in the bundle; if it is ever missing, the code-drawn glyph stands in.
             if let art = Self.art {
@@ -139,7 +130,7 @@ final class App: NSObject, NSApplicationDelegate {
             } else {
                 controller.setIcon(CharacterIcon.macDaddy(level: level, asleep: mood.asleep, flourish: flourish, grin: grin))
             }
-        case .symbol:
+        case .normal:
             let color: NSColor
             switch mood.level {
             case .cool: color = mood.asleep ? .systemGray : .systemPurple
@@ -166,15 +157,16 @@ final class App: NSObject, NSApplicationDelegate {
         cleanupDuties.forEach { menu.addItem($0.sectionItem()) }
         menu.addItem(.separator())
 
-        let icon = NSMenuItem(title: "Icon", action: nil, keyEquivalent: "")
-        let im = NSMenu()
-        for style in IconStyle.allCases {
-            let i = NSMenuItem(title: style.title, action: #selector(pickIcon(_:)), keyEquivalent: "")
-            i.target = self; i.representedObject = style.rawValue; i.state = style == IconStyle.current ? .on : .off
-            im.addItem(i)
+        let mode = Mode.load(from: .standard), terms = Terms(mode)
+        let modeItem = NSMenuItem(title: terms.modeMenu, action: nil, keyEquivalent: "")
+        let mm = NSMenu()
+        for m in Mode.allCases {
+            let i = NSMenuItem(title: terms.modeName(m), action: #selector(pickMode(_:)), keyEquivalent: "")
+            i.target = self; i.representedObject = m.rawValue; i.state = m == mode ? .on : .off
+            mm.addItem(i)
         }
-        icon.submenu = im
-        menu.addItem(icon)
+        modeItem.submenu = mm
+        menu.addItem(modeItem)
 
         let login = NSMenuItem(title: "Start at Login", action: #selector(toggleLogin), keyEquivalent: "")
         login.target = self; login.state = LoginItem.isEnabled ? .on : .off
@@ -184,9 +176,10 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: "Quit Mac Daddy", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
-    @objc private func pickIcon(_ s: NSMenuItem) {
-        guard let raw = s.representedObject as? String, let style = IconStyle(rawValue: raw) else { return }
-        IconStyle.current = style
+    @objc private func pickMode(_ s: NSMenuItem) {
+        guard let raw = s.representedObject as? String, let mode = Mode(rawValue: raw) else { return }
+        mode.save(to: .standard)
+        if mode == .normal { grinAnimation.cancel(); grin = 0 }
         redraw()
     }
     @objc private func toggleLogin() { LoginItem.toggle() }

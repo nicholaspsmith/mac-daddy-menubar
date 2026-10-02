@@ -63,6 +63,10 @@ extension Duty {
     }
 }
 
+/// The current mode's words. Read at each use, so switching mode takes effect
+/// on the next menu, notification or window.
+var terms: Terms { Terms(Mode.load(from: .standard)) }
+
 func indented(_ item: NSMenuItem) -> NSMenuItem {
     item.indentationLevel = 1
     return item
