@@ -120,7 +120,8 @@ This is a standalone `.app` built on [StatusItemKit](https://github.com/nicholas
 Part of a suite of macOS menu-bar apps that share one framework, one
 build-and-sign script, and one installer. They are designed to sit in the
 same bar together: consistent menus, a common **Icon** picker for shape and
-colour, and cooperative hiding so no icon strands another.
+colour (in Mac Daddy, **Mode** picks the icon and the wording together), and
+cooperative hiding so no icon strands another.
 
 | App | What it does |
 |---|---|
