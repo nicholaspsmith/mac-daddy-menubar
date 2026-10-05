@@ -29,7 +29,7 @@ In Pimp Mode the icon is the mascot, Menu Pimp. His hat shows the process count:
 - **Chain glint** — for two seconds after the Downloads sweep trashes files
 - **Asleep, grey, eyes closed, with a "z"** — every duty is paused (the hat keeps its warning colour)
 
-Once a minute he grins and a gold gleam crosses his teeth (550 ms). When
+Now and then he grins and a gold gleam crosses his teeth (550 ms). When
 several Menumon mascots are running they take turns, a second apart:
 Archimedes (Claude Usage), Menu Pimp (Mac Daddy), Carol (SoundChain),
 Iguanamous (VPN & DNS), then Armonitor (Monitor Lizard), counting only the
