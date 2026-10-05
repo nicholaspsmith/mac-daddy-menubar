@@ -4,6 +4,8 @@
 
 <p align="center">Part of <strong><a href="https://menumon.nicksmith.software">Menumon</a></strong>.</p>
 
+<p align="center"><img src="docs/animation.png" alt="Menu Pimp grinning, a gold gleam crossing his teeth"></p>
+
 Keeps your Mac in line: pimp slaps (kills) Apple's media trackers, trashes stale downloads, finds Street Walkers (Lost Souls) — your orphaned processes burning CPU — learns which Hoes (CPU Hogs) you force-quit and pimp slaps them for you, and sweats when your process count climbs. All of that in Pimp Mode; [Normal Mode](#mode) says it plainly. Built on
 [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit).
 
@@ -21,8 +23,6 @@ In Pimp Mode the menu-bar icon is Menu Pimp, the Mac Daddy of the menu bar: his 
 - **Asleep, eyes closed, grey, with a "z"** — every cleanup is paused (the hat keeps its warning colour)
 
 Once a minute he grins: his smile widens to show white teeth and a gold gleam sweeps across them, 550 ms and linear. When several Menumon mascots are running they take turns, a second apart: Archimedes (Claude Usage), Menu Pimp (Mac Daddy), Carol (SoundChain), Caveepyan (VPN & DNS), then Armonitor (Monitor Lizard), counting only the ones that are running. Skipped when Reduce Motion is on.
-
-![Menu Pimp grinning, a gold gleam crossing his teeth](docs/animation.png)
 
 Prefer a plain symbol and plain words? **menu ▸ Mode ▸ Normal Mode** (see [Mode](#mode)).
 
