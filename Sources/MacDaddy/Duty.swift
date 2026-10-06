@@ -5,6 +5,7 @@
 // Copyright (c) 2026 Nicholas Smith
 
 import AppKit
+import StatusItemKit
 
 protocol Duty: AnyObject {
     /// Called on the main thread every 5 s; the duty decides whether its own interval has elapsed.
@@ -45,13 +46,30 @@ extension Duty {
         let sub = NSMenu()
         addMenuItems(to: sub)
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        applySectionTitle(to: item)
+        item.submenu = sub
+        return item
+    }
+
+    /// Writes the duty's current line onto its top-level item.
+    func applySectionTitle(to item: NSMenuItem) {
+        item.attributedTitle = nil
+        item.title = title
         if warning != nil {
             item.attributedTitle = NSAttributedString(string: "⚠ \(title)", attributes: [.foregroundColor: NSColor.systemRed])
         } else if needsAttention {
             item.attributedTitle = NSAttributedString(string: title, attributes: [.font: NSFont.boldSystemFont(ofSize: 13)])
         }
-        item.submenu = sub
-        return item
+    }
+
+    /// A keep-open checkbox in the duty's submenu. After `set` runs, the
+    /// duty's line in the top-level menu (still open behind the submenu) is
+    /// rewritten, so "off" / "on" there follows the tick at once.
+    func toggleItem(_ title: String, isOn: Bool, in menu: NSMenu, _ set: @escaping (Bool) -> Void) -> NSMenuItem {
+        ToggleMenuItem.make(title: title, isOn: isOn) { [weak self, weak menu] on in
+            set(on)
+            if let self, let parent = menu?.parentItem { self.applySectionTitle(to: parent) }
+        }
     }
 
     /// A red "⚠ …" line for the top of a duty's submenu, when it is failing.
@@ -66,6 +84,11 @@ extension Duty {
 /// The current mode's words. Read at each use, so switching mode takes effect
 /// on the next menu, notification or window.
 var terms: Terms { Terms(Mode.load(from: .standard)) }
+
+extension NSMenu {
+    /// The item in the parent menu that opens this one.
+    var parentItem: NSMenuItem? { supermenu?.items.first { $0.submenu === self } }
+}
 
 func indented(_ item: NSMenuItem) -> NSMenuItem {
     item.indentationLevel = 1

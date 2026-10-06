@@ -197,9 +197,7 @@ final class LostSoulsDuty: NSObject, Duty {
     func addMenuItems(to menu: NSMenu) {
         let terms = terms
         warningItems().forEach(menu.addItem)
-        let toggle = NSMenuItem(title: "Enabled", action: #selector(toggleEnabled), keyEquivalent: "")
-        toggle.target = self; toggle.state = enabled ? .on : .off
-        menu.addItem(toggle)
+        menu.addItem(toggleItem("Enabled", isOn: enabled, in: menu) { [weak self] in self?.enabled = $0 })
         if !current.isEmpty { menu.addItem(.separator()) }
         let hottest = current.sorted { $0.meanCPU > $1.meanCPU }
         for s in hottest.prefix(menuLimit) {
@@ -220,9 +218,7 @@ final class LostSoulsDuty: NSObject, Duty {
             menu.addItem(more)
         }
         menu.addItem(.separator())
-        let auto = NSMenuItem(title: terms.banishAutomatically, action: #selector(toggleAuto), keyEquivalent: "")
-        auto.target = self; auto.state = autoBanish ? .on : .off
-        menu.addItem(auto)
+        menu.addItem(toggleItem(terms.banishAutomatically, isOn: autoBanish, in: menu) { [weak self] in self?.autoBanish = $0 })
     }
 
     private func soul(for sender: NSMenuItem) -> LostSouls.Soul? {
@@ -230,8 +226,6 @@ final class LostSoulsDuty: NSObject, Duty {
         return current.first { Self.key($0) == k }
     }
 
-    @objc private func toggleEnabled() { enabled.toggle() }
-    @objc private func toggleAuto() { autoBanish.toggle() }
     @objc private func endSoul(_ sender: NSMenuItem) {
         guard let s = soul(for: sender) else { return }
         end(s)
