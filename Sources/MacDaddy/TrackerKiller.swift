@@ -51,9 +51,7 @@ final class TrackerKiller: NSObject, Duty {
 
     func addMenuItems(to menu: NSMenu) {
         warningItems().forEach(menu.addItem)
-        let toggle = NSMenuItem(title: "Enabled", action: #selector(toggleEnabled), keyEquivalent: "")
-        toggle.target = self; toggle.state = enabled ? .on : .off
-        menu.addItem(toggle)
+        menu.addItem(toggleItem("Enabled", isOn: enabled, in: menu) { [weak self] in self?.enabled = $0 })
         let killNowItem = NSMenuItem(title: terms.killNow(count: killsThisSession), action: #selector(killNow), keyEquivalent: "")
         killNowItem.target = self
         menu.addItem(killNowItem)
@@ -70,20 +68,16 @@ final class TrackerKiller: NSObject, Duty {
 
         let procs = NSMenuItem(title: "Processes", action: nil, keyEquivalent: "")
         let pm = NSMenu()
-        for (n, t) in Self.targets.enumerated() {
-            let i = NSMenuItem(title: t.label, action: #selector(toggleTarget(_:)), keyEquivalent: "")
-            i.target = self; i.tag = n; i.state = targetEnabled(t.process) ? .on : .off
-            pm.addItem(i)
+        for t in Self.targets {
+            let p = t.process
+            pm.addItem(ToggleMenuItem.make(title: t.label, isOn: targetEnabled(p)) { [weak self] on in
+                self?.defaults.set(on, forKey: "tracker.target.\(p)")
+            })
         }
         procs.submenu = pm
         menu.addItem(procs)
     }
 
-    @objc private func toggleEnabled() { enabled.toggle() }
     @objc private func killNow() { sweep(now: Date()) }
     @objc private func setInterval(_ s: NSMenuItem) { intervalSeconds = s.tag }
-    @objc private func toggleTarget(_ s: NSMenuItem) {
-        let p = Self.targets[s.tag].process
-        defaults.set(!targetEnabled(p), forKey: "tracker.target.\(p)")
-    }
 }

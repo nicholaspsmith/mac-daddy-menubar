@@ -241,9 +241,7 @@ final class HoesDuty: NSObject, Duty {
     func addMenuItems(to menu: NSMenu) {
         let terms = terms
         warningItems().forEach(menu.addItem)
-        let toggle = NSMenuItem(title: "Enabled", action: #selector(toggleEnabled), keyEquivalent: "")
-        toggle.target = self; toggle.state = enabled ? .on : .off
-        menu.addItem(toggle)
+        menu.addItem(toggleItem("Enabled", isOn: enabled, in: menu) { [weak self] in self?.enabled = $0 })
         if !current.isEmpty || !state.suggestions.isEmpty { menu.addItem(.separator()) }
         let hottest = current.sorted { $0.meanCPU > $1.meanCPU }
         for h in hottest.prefix(menuLimit) {
@@ -295,20 +293,13 @@ final class HoesDuty: NSObject, Duty {
         let shown = applicableRules
         if shown.isEmpty { m.addItem(disabled("No rules yet")) }
         for r in shown {
-            var title = "\(r.name) — \(r.summary)"
-            if r.builtIn { title += " (built-in)" }
-            if r.paused { title += " (paused)" }
-            if let t = r.tightenedAt, Date().timeIntervalSince(t) < 24 * 3600 { title += " (tightened)" }
-            let row = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            let row = NSMenuItem(title: Self.ruleTitle(r), action: nil, keyEquivalent: "")
             let sub = choices(threshold: r.threshold, minutes: r.minutes, id: r.id, #selector(ruleThreshold(_:)), #selector(ruleMinutes(_:)))
             if r.restartLabel != nil {
-                let i = item(terms.restartAfterKill, #selector(toggleRestart(_:)), r.id); i.state = r.restartAfterKill ? .on : .off
-                sub.addItem(i)
+                sub.addItem(ruleToggle(terms.restartAfterKill, isOn: r.restartAfterKill, id: r.id, row: row) { $0.restartAfterKill = $1 })
             }
-            let front = item("Skip While In Front", #selector(toggleFront(_:)), r.id); front.state = r.skipWhenFrontmost ? .on : .off
-            sub.addItem(front)
-            let paused = item("Paused", #selector(togglePaused(_:)), r.id); paused.state = r.paused ? .on : .off
-            sub.addItem(paused)
+            sub.addItem(ruleToggle("Skip While In Front", isOn: r.skipWhenFrontmost, id: r.id, row: row) { $0.skipWhenFrontmost = $1 })
+            sub.addItem(ruleToggle("Paused", isOn: r.paused, id: r.id, row: row) { $0.paused = $1 })
             if !r.builtIn { sub.addItem(.separator()); sub.addItem(item("Delete", #selector(deleteRule(_:)), r.id)) }
             row.submenu = sub
             m.addItem(row)
@@ -320,6 +311,24 @@ final class HoesDuty: NSObject, Duty {
             for line in UAWatchdogLog.summary(text, now: Date(), terms: terms) { m.addItem(indented(disabled(line))) }
         }
         return m
+    }
+
+    private static func ruleTitle(_ r: HoeRule) -> String {
+        var title = "\(r.name) — \(r.summary)"
+        if r.builtIn { title += " (built-in)" }
+        if r.paused { title += " (paused)" }
+        if let t = r.tightenedAt, Date().timeIntervalSince(t) < 24 * 3600 { title += " (tightened)" }
+        return title
+    }
+
+    /// A keep-open checkbox on a rule; the rule's row in Rules ▸ is retitled
+    /// in place, so "(paused)" follows the tick while the menu stays open.
+    private func ruleToggle(_ title: String, isOn: Bool, id: String, row: NSMenuItem,
+                            _ change: @escaping (inout HoeRule, Bool) -> Void) -> NSMenuItem {
+        ToggleMenuItem.make(title: title, isOn: isOn) { [weak self, weak row] on in
+            guard let self, let r = self.editRule(id: id, { change(&$0, on) }) else { return }
+            row?.title = Self.ruleTitle(r)
+        }
     }
 
     /// Threshold ▸ and Duration ▸ for a rule or a suggestion; the current value is always listed.
@@ -361,10 +370,17 @@ final class HoesDuty: NSObject, Duty {
     }
 
     private func editRule(_ sender: NSMenuItem, _ change: (inout HoeRule) -> Void) {
-        guard let id = sender.representedObject as? String, let i = state.rules.firstIndex(where: { $0.id == id }) else { return }
+        guard let id = sender.representedObject as? String else { return }
+        editRule(id: id, change)
+    }
+
+    @discardableResult
+    private func editRule(id: String, _ change: (inout HoeRule) -> Void) -> HoeRule? {
+        guard let i = state.rules.firstIndex(where: { $0.id == id }) else { return nil }
         change(&state.rules[i])
         append(["RULE changed \(state.rules[i].name): \(state.rules[i].summary)" + (state.rules[i].paused ? " (paused)" : "")], to: logURL)
         save()
+        return state.rules[i]
     }
 
     private func editSuggestion(_ sender: NSMenuItem, _ change: (inout HoesState.Suggestion) -> Void) {
@@ -373,7 +389,6 @@ final class HoesDuty: NSObject, Duty {
         save()
     }
 
-    @objc private func toggleEnabled() { enabled.toggle() }
     @objc private func openLog() { NSWorkspace.shared.open(logURL) }
 
     /// SIGTERM, then SIGKILL after 5 s; a sure sign you wanted it gone.
@@ -421,9 +436,6 @@ final class HoesDuty: NSObject, Duty {
     @objc private func suggestionMinutes(_ sender: NSMenuItem) { editSuggestion(sender) { $0.minutes = sender.tag } }
     @objc private func ruleThreshold(_ sender: NSMenuItem) { editRule(sender) { $0.threshold = sender.tag } }
     @objc private func ruleMinutes(_ sender: NSMenuItem) { editRule(sender) { $0.minutes = sender.tag } }
-    @objc private func toggleRestart(_ sender: NSMenuItem) { editRule(sender) { $0.restartAfterKill.toggle() } }
-    @objc private func toggleFront(_ sender: NSMenuItem) { editRule(sender) { $0.skipWhenFrontmost.toggle() } }
-    @objc private func togglePaused(_ sender: NSMenuItem) { editRule(sender) { $0.paused.toggle() } }
 
     @objc private func deleteRule(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String, state.deleteRule(id: id) else { return }

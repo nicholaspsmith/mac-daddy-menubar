@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.6.2] - 2026-10-06
+
+- Ticking a checkbox in the menu no longer closes it: each duty's Enabled, the tracker Processes, Banish Automatically (Pimp Slap Automatically), and a rule's Restart After Kill, Skip While In Front and Paused, plus Settings ▸ Start at Login. The duty's line and the rule's "(paused)" update as you tick
+
 ## [1.6.1] - 2026-10-05
 
 - New app icon: Menu Pimp as he looks in the menu bar

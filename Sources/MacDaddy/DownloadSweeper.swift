@@ -106,9 +106,7 @@ final class DownloadSweeper: NSObject, Duty {
         if lastError != nil, let errItem = menu.items.last {
             errItem.action = #selector(openPrivacy); errItem.target = self   // clicking the ⚠ line opens Files and Folders
         }
-        let toggle = NSMenuItem(title: "Enabled", action: #selector(toggleEnabled), keyEquivalent: "")
-        toggle.target = self; toggle.state = enabled ? .on : .off
-        menu.addItem(toggle)
+        menu.addItem(toggleItem("Enabled", isOn: enabled, in: menu) { [weak self] in self?.enabled = $0 })
         let f = DateFormatter(); f.dateStyle = .short; f.timeStyle = .short
         let last = lastSweep == .distantPast ? "never" : f.string(from: lastSweep)
         let run = NSMenuItem(title: "Sweep Now (last: \(last), \(trashedLastSweep) trashed)", action: #selector(runNow), keyEquivalent: "")
@@ -128,7 +126,6 @@ final class DownloadSweeper: NSObject, Duty {
         menu.addItem(log)
     }
 
-    @objc private func toggleEnabled() { enabled.toggle() }
     @objc private func runNow() { sweep(manual: true) }
     @objc private func setDays(_ s: NSMenuItem) { daysToKeep = s.tag }
     @objc private func openLog() { NSWorkspace.shared.open(logURL) }
