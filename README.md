@@ -16,7 +16,7 @@ It has two vocabularies: **Pimp Mode** (the default) and **Normal Mode** (see
 [Mode](#mode)). This README uses the Pimp Mode names with the Normal Mode name
 in brackets the first time.
 
-**Version 1.5.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
+**Version 1.6.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
@@ -42,7 +42,9 @@ In Normal Mode the icon is a plain sparkles symbol in the same colours.
 Processes sits at the top. Each other duty is one summary line ("Downloads —
 swept 10/1/26", "Hoes — 1 on the clock (running hot) · 1 suggestion") with its
 controls in a submenu. The line goes bold when something needs you, and red
-when the duty is failing; the submenu then starts with the reason.
+when the duty is failing; the submenu then starts with the reason. App-wide
+settings sit in the Settings submenu (StatusItemKit's `SettingsMenu`) at the
+foot of the menu, above Quit.
 
 | Item | Purpose |
 |---|---|
@@ -51,8 +53,10 @@ when the duty is failing; the submenu then starts with the reason.
 | Downloads ▸ Enabled / Sweep Now / Keep Files For / Open Log | Moves files older than 7 / 14 / 30 / 60 / 90 days from `~/Downloads` to the Trash |
 | Street Walkers (Lost Souls) ▸ … | Orphaned processes burning CPU — see below |
 | Hoes (CPU Hogs) ▸ … | Third-party CPU hogs and learned kill rules — see below |
-| Mode ▸ Pimp Mode / Normal Mode | Mascot and Pimp Mode wording, or a plain symbol and standard terms |
-| Start at Login | `SMAppService`, no launchd agent |
+| Settings ▸ Mode ▸ Pimp Mode / Normal Mode | Mascot and Pimp Mode wording, or a plain symbol and standard terms |
+| Settings ▸ Start at Login | `SMAppService`, no launchd agent |
+| Settings ▸ Version | The running build's version (grey) |
+| Quit Mac Daddy | ⌘Q |
 
 Settings live in the `defaults` domain `com.nicholaspsmith.MacDaddy`.
 
@@ -121,7 +125,7 @@ while Mac Daddy is running.
 ## Mode
 
 **Pimp Mode** shows Menu Pimp and uses his words. **Normal Mode** shows the
-sparkles symbol and uses standard terms. Switching under **Mode** applies at
+sparkles symbol and uses standard terms. Switching under **Settings ▸ Mode** applies at
 once to the icon, the menu, notifications and the process window. Log files,
 defaults keys and code use the same names in either mode.
 
@@ -172,7 +176,7 @@ Recycler settings, and a previous choice of the plain icon becomes Normal Mode.
 
 ### Start at Login
 
-Toggle it from the menu, or from the shell:
+Toggle it from Settings ▸ Start at Login, or from the shell:
 
 ```sh
 "$HOME/Applications/Mac Daddy.app/Contents/MacOS/MacDaddy" --login on       # or: off, status

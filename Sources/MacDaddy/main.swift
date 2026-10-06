@@ -155,25 +155,18 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         // Each cleanup duty is one summary line; its controls open as a submenu.
         cleanupDuties.forEach { menu.addItem($0.sectionItem()) }
-        menu.addItem(.separator())
-
-        let mode = Mode.load(from: .standard), terms = Terms(mode)
-        let modeItem = NSMenuItem(title: terms.modeMenu, action: nil, keyEquivalent: "")
-        let mm = NSMenu()
-        for m in Mode.allCases {
-            let i = NSMenuItem(title: terms.modeName(m), action: #selector(pickMode(_:)), keyEquivalent: "")
-            i.target = self; i.representedObject = m.rawValue; i.state = m == mode ? .on : .off
-            mm.addItem(i)
-        }
-        modeItem.submenu = mm
-        menu.addItem(modeItem)
-
-        let login = NSMenuItem(title: "Start at Login", action: #selector(toggleLogin), keyEquivalent: "")
-        login.target = self; login.state = LoginItem.isEnabled ? .on : .off
-        menu.addItem(login)
-        menu.addItem(.separator())
-        menu.addItem(AppVersion.menuItem())
-        menu.addItem(NSMenuItem(title: "Quit Mac Daddy", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        SettingsMenu.addFooter(to: menu, appName: "Mac Daddy", items: { [self] settings in
+            let mode = Mode.load(from: .standard), terms = Terms(mode)
+            let modeItem = NSMenuItem(title: terms.modeMenu, action: nil, keyEquivalent: "")
+            let mm = NSMenu()
+            for m in Mode.allCases {
+                let i = NSMenuItem(title: terms.modeName(m), action: #selector(pickMode(_:)), keyEquivalent: "")
+                i.target = self; i.representedObject = m.rawValue; i.state = m == mode ? .on : .off
+                mm.addItem(i)
+            }
+            modeItem.submenu = mm
+            settings.addItem(modeItem)
+        })
     }
 
     @objc private func pickMode(_ s: NSMenuItem) {
@@ -182,7 +175,6 @@ final class App: NSObject, NSApplicationDelegate {
         if mode == .normal { grinAnimation.cancel(); grin = 0 }
         redraw()
     }
-    @objc private func toggleLogin() { LoginItem.toggle() }
 }
 
 // `--login on|off|status` and exit before any UI exists (install.sh uses it).
