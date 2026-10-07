@@ -111,7 +111,7 @@ final class HoesTests: XCTestCase {
     }
 
     func testAHoeVanishingWhileHotIsAProbableForceQuit() {
-        let r = hoeThenGone(Hoes())
+        let r = hoeThenGone(Hoes(), forceQuitWindowAt: t0.addingTimeInterval(170))
         XCTAssertEqual(r.forceQuits.count, 1)
         let fq = r.forceQuits[0]
         XCTAssertEqual(fq.key, spin)
@@ -119,9 +119,37 @@ final class HoesTests: XCTestCase {
         XCTAssertEqual(fq.pid, 7)
         XCTAssertEqual(fq.meanCPU, 99, accuracy: 0.01)
         XCTAssertEqual(fq.hotSeconds, 150)
-        XCTAssertEqual(fq.evidence, [])
+        XCTAssertEqual(fq.evidence, [.forceQuitWindow])
         XCTAssertEqual(fq.launchdLabel, "com.x.spin")
         XCTAssertFalse(fq.isApp)
+    }
+
+    /// ffmpeg finishing an encode at 900% looks exactly like a force-quit.
+    func testACommandLineHoeFinishingOnItsOwnDoesNotCount() {
+        let h = Hoes()
+        XCTAssertEqual(hoeThenGone(h).forceQuits, [])
+        XCTAssertEqual(round(h, at: 210, []).forceQuits, [])
+        XCTAssertEqual(round(h, at: 300, []).forceQuits, [])
+    }
+
+    func testAnAppVanishingHotNeedsNoOtherEvidence() {
+        let h = Hoes()
+        let app = P(pid: 7, cpu: 99, command: "/Applications/Spin.app/Contents/MacOS/Spin", bundleID: "com.x.Spin")
+        feed(h, through: 150) { _ in [app] }
+        let r = round(h, at: 180, [])
+        XCTAssertEqual(r.forceQuits.map(\.key), ["com.x.Spin"])
+        XCTAssertEqual(r.forceQuits.first?.evidence, [])
+        XCTAssertEqual(r.forceQuits.first?.isApp, true)
+    }
+
+    func testACommandLineHoeRespawnedByLaunchdCounts() {
+        let h = Hoes()
+        XCTAssertEqual(hoeThenGone(h).forceQuits, [])
+        let r = round(h, at: 210, [P(pid: 8, cpu: 1, label: "com.x.spin")])
+        XCTAssertEqual(r.forceQuits.map(\.pid), [7])
+        XCTAssertEqual(r.forceQuits.first?.evidence, [.respawned])
+        XCTAssertEqual(r.forceQuits.first?.hotSeconds, 150)
+        XCTAssertEqual(r.respawns, [Hoes.Respawn(key: spin, launchdLabel: "com.x.spin")])
     }
 
     func testAnExitAfterCoolingDoesNotCount() {
@@ -147,7 +175,7 @@ final class HoesTests: XCTestCase {
         // Within 60 s before the last sample still counts; earlier does not.
         XCTAssertEqual(hoeThenGone(Hoes(), forceQuitWindowAt: t0.addingTimeInterval(100)).forceQuits.first?.evidence,
                        [.forceQuitWindow])
-        XCTAssertEqual(hoeThenGone(Hoes(), forceQuitWindowAt: t0.addingTimeInterval(60)).forceQuits.first?.evidence, [])
+        XCTAssertEqual(hoeThenGone(Hoes(), forceQuitWindowAt: t0.addingTimeInterval(60)).forceQuits, [])
     }
 
     func testEndedFromTheMenuIsCertain() {
@@ -168,7 +196,7 @@ final class HoesTests: XCTestCase {
         let h = Hoes()
         feed(h, through: 150) { _ in [P(pid: 7, cpu: 99)] }
         h.markEnded(pid: 7, start: t0, byRule: true)   // wrong start time
-        XCTAssertEqual(round(h, at: 180, []).forceQuits.count, 1)
+        XCTAssertEqual(round(h, at: 180, [], forceQuitWindowAt: t0.addingTimeInterval(170)).forceQuits.count, 1)
     }
 
     func testRespawnWithinAMinuteIsReported() {
@@ -189,7 +217,8 @@ final class HoesTests: XCTestCase {
     func testAReusedPIDMeansTheOldProcessExited() {
         let h = Hoes()
         feed(h, through: 150) { _ in [P(pid: 7, cpu: 99)] }
-        let r = round(h, at: 180, [P(pid: 7, cpu: 99, command: "/opt/other", started: t0.addingTimeInterval(170))])
+        let r = round(h, at: 180, [P(pid: 7, cpu: 99, command: "/opt/other", started: t0.addingTimeInterval(170))],
+                      forceQuitWindowAt: t0.addingTimeInterval(170))
         XCTAssertEqual(r.forceQuits.map(\.key), [spin])
         XCTAssertEqual(r.hoes, [])   // the newcomer starts from nothing
     }
