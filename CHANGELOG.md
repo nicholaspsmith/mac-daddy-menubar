@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.6.3] - 2026-10-07
+
+- Hoes no longer mistakes a command-line program that finished its work (an `ffmpeg` encode, a build) for one you force-quit, so it stops offering to auto-kill it. A command-line hoe that vanishes now counts only if Activity Monitor or the Force Quit window was in front, you ended it from the menu, or launchd restarted it; apps are unchanged
+
 ## [1.6.2] - 2026-10-06
 
 - Ticking a checkbox in the menu no longer closes it: each duty's Enabled, the tracker Processes, Banish Automatically (Pimp Slap Automatically), and a rule's Restart After Kill, Skip While In Front and Paused, plus Settings ▸ Start at Login. The duty's line and the rule's "(paused)" update as you tick

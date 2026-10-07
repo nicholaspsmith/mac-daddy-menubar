@@ -103,7 +103,10 @@ or killed it here — Mac Daddy guesses a rule and asks once, e.g. "Auto pimp
 slap spin? (≥90% for 5 min)". The guess is its mean CPU less 10, rounded to
 the nearest 5 and clamped to 80–98%, for half as long as it ran hot (2–30
 min). Activity Monitor or the Force Quit window being frontmost, or launchd
-restarting the process, count as extra evidence. **Yes** creates the rule,
+restarting the process, count as extra evidence. An app vanishing hot is
+enough on its own; a command-line program needs that evidence, because one
+that simply finished its work (an `ffmpeg` encode, a build) vanishes hot too.
+**Yes** creates the rule,
 **Adjust** edits the guess first, **No** never asks again for that program.
 Force-quitting it again tightens its rule.
 

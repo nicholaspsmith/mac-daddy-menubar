@@ -12,6 +12,10 @@ import Foundation
 /// interesting PIDs; each round says which are hoes, which rules are due, and
 /// which hoes vanished while still hot — probably force-quit, which is how
 /// Mac Daddy learns. It never kills anything itself.
+///
+/// Vanishing hot is enough for an app. A command-line program also needs
+/// evidence: one that simply finished (an encode, a build) vanishes hot too.
+/// Without any, it is held for `window` and counts only if launchd respawns it.
 public final class Hoes {
     /// What the app learns about a PID beyond `ps`.
     public struct Detail: Equatable {
@@ -140,7 +144,8 @@ public final class Hoes {
         var ended: Ender?
     }
     private var tracks: [Int: Track] = [:]
-    private var exits: [String: (at: Date, path: String, pid: Int)] = [:]
+    /// `held`: a command-line force-quit still waiting for evidence.
+    private var exits: [String: (at: Date, path: String, pid: Int, held: ForceQuit?)] = [:]
     private var lastRound: Date?
 
     public init(hoeCPU: Double = 80, hoeAfter: TimeInterval = 120, floor: Double = 70, sampleInterval: TimeInterval = 30) {
@@ -215,15 +220,22 @@ public final class Hoes {
             var evidence: [Evidence] = []
             if t.ended == .here { evidence.append(.endedHere) }
             if let w = forceQuitWindowAt, w >= last.at.addingTimeInterval(-window), w <= now { evidence.append(.forceQuitWindow) }
-            out.forceQuits.append(ForceQuit(pid: pid, key: t.key, name: t.name, command: t.command, ppid: t.ppid,
-                                            isApp: t.path.contains(".app/Contents/MacOS/"), meanCPU: Self.mean(hot),
-                                            hotSeconds: Self.span(hot), evidence: evidence, launchdLabel: t.label))
-            exits[t.key] = (now, t.path, pid)
+            let fq = ForceQuit(pid: pid, key: t.key, name: t.name, command: t.command, ppid: t.ppid,
+                               isApp: t.path.contains(".app/Contents/MacOS/"), meanCPU: Self.mean(hot),
+                               hotSeconds: Self.span(hot), evidence: evidence, launchdLabel: t.label)
+            let held = !fq.isApp && evidence.isEmpty
+            if !held { out.forceQuits.append(fq) }
+            exits[t.key] = (now, t.path, pid, held ? fq : nil)
         }
 
         for row in Self.parse(text) where row.pid != selfPID {
             let d = details[row.pid]
             if let d, let e = exits[Self.key(d)], e.pid != row.pid {
+                if let fq = e.held {
+                    out.forceQuits.append(ForceQuit(pid: fq.pid, key: fq.key, name: fq.name, command: fq.command, ppid: fq.ppid,
+                                                    isApp: fq.isApp, meanCPU: fq.meanCPU, hotSeconds: fq.hotSeconds,
+                                                    evidence: [.respawned], launchdLabel: fq.launchdLabel))
+                }
                 out.respawns.append(Respawn(key: Self.key(d), launchdLabel: d.launchdLabel))
                 exits[Self.key(d)] = nil
             }
