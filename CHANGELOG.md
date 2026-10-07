@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.7.0] - 2026-10-07
+
+- No user-visible changes.
+
 ## [1.6.3] - 2026-10-07
 
 - Hoes no longer mistakes a command-line program that finished its work (an `ffmpeg` encode, a build) for one you force-quit, so it stops offering to auto-kill it. A command-line hoe that vanishes now counts only if Activity Monitor or the Force Quit window was in front, you ended it from the menu, or launchd restarted it; apps are unchanged
