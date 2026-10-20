@@ -15,10 +15,25 @@ else echo "Release hook: StatusItemKit not found beside this repo — clone it a
 
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_NAME="Mac Daddy.app"
-"$SRC_DIR/scripts/build-app.sh"
-mkdir -p "$HOME/Applications"
-ln -sfn "$SRC_DIR/build/$APP_NAME" "$HOME/Applications/$APP_NAME"
-echo "Linked $HOME/Applications/$APP_NAME -> $SRC_DIR/build/$APP_NAME"
+# Parity hand-off: where parity syncs this app it owns ~/Applications, and a
+# build here would be a second copy LaunchServices can launch instead
+# (StatusItemKit README, "Parity"). PARITY=off ./install.sh builds here anyway.
+parity_handoff() {   # 0 = parity installed it; 1 = build it here; exits if the hand-off failed
+    local kit status=0
+    kit="$(cd "$(dirname "$0")/.." && pwd)/StatusItemKit/scripts/parity/handoff.sh"
+    [ -x "$kit" ] || return 1
+    "$kit" "$(cd "$(dirname "$0")" && pwd)" || status=$?
+    case "$status" in 0) return 0 ;; 10) return 1 ;; *) exit "$status" ;; esac
+}
+PARITY_INSTALLED=
+if parity_handoff; then
+    PARITY_INSTALLED=1
+else
+    "$SRC_DIR/scripts/build-app.sh"
+    mkdir -p "$HOME/Applications"
+    ln -sfn "$SRC_DIR/build/$APP_NAME" "$HOME/Applications/$APP_NAME"
+    echo "Linked $HOME/Applications/$APP_NAME -> $SRC_DIR/build/$APP_NAME"
+fi
 
 # --- retire the three apps Mac Daddy replaces --------------------------------
 retire() {   # $1 = app name in ~/Applications, $2 = executable, $3 = bundle id
@@ -67,6 +82,9 @@ if [ -f "$HOME/.local/bin/ua-watchdog.sh" ]; then
     fi
 fi
 rm -f "$HOME/.local/state/ua-watchdog.heartbeat" "$HOME/.local/state/ua-watchdog.state"
+
+# Parity installed and (re)launched it; the rest is for a local build.
+[ -z "$PARITY_INSTALLED" ] || exit 0
 
 # --- Start at Login (ask; never unasked) --------------------------------------
 APP="$HOME/Applications/$APP_NAME"
