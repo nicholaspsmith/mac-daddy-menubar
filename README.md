@@ -16,7 +16,7 @@ It has two vocabularies: **Pimp Mode** (the default) and **Normal Mode** (see
 [Mode](#mode)). This README uses the Pimp Mode names with the Normal Mode name
 in brackets the first time.
 
-**Version 1.6.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
+**Version 1.14.1** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
