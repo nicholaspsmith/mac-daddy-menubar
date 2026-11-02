@@ -8,6 +8,12 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.18.0] - 2026-11-02
+
+- Street Walkers (Lost Souls) is folded into Hoes (CPU Hogs): an orphaned process burning over 50% CPU for 10 minutes is now a hoe with no pimp (an orphaned process), listed with the other hoes and tagged "· no pimp", with Pimp Slap and Spare. It still notifies you once
+- Pimp Slap Automatically (Banish Automatically) is now Hoes ▸ Auto Pimp Slap Hoes With No Pimp (Auto-End Orphaned Processes), and keeps your setting
+- The menu loses its Street Walkers line
+
 ## [1.17.0] - 2026-11-02
 
 - Menu Crane is now part of Mac Daddy: the **Pimp Cane** (Launcher in Normal Mode) opens apps, does arithmetic, converts units and finds emoji on ⌘Space, with ⌘↩ handing the query to Spotlight. Off on a new install

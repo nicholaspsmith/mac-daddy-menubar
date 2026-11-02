@@ -20,7 +20,7 @@ final class SettingsMigrationTests: XCTestCase {
         XCTAssertNil(target.values["tracker.target.mediaanalysisd"])   // absent stays absent → default
         XCTAssertEqual(target.values["downloads.daysToKeep"] as? Int, 14)
         XCTAssertEqual(target.values["downloads.lastSweep"] as? Date, swept)
-        XCTAssertEqual(target.values[SettingsMigration.versionKey] as? Int, 2)
+        XCTAssertEqual(target.values[SettingsMigration.versionKey] as? Int, SettingsMigration.currentVersion)
     }
 
     func testRunsOnlyOnce() {
@@ -46,7 +46,7 @@ final class SettingsMigrationTests: XCTestCase {
         XCTAssertNil(target.values["downloads.lastSweep"])
         XCTAssertEqual(target.values["downloads.daysToKeep"] as? Int, 60)
         XCTAssertTrue(log.contains { $0.contains("intervalSeconds") })
-        XCTAssertEqual(target.values[SettingsMigration.versionKey] as? Int, 2)
+        XCTAssertEqual(target.values[SettingsMigration.versionKey] as? Int, SettingsMigration.currentVersion)
     }
 
     // Version 2: the Godot Reaper's switch becomes the Lost Souls switch.
@@ -56,7 +56,7 @@ final class SettingsMigrationTests: XCTestCase {
         let log = SettingsMigration.run(target: target, tracker: MemoryStore(["intervalSeconds": 60]), downloads: nil)
         XCTAssertEqual(target.values["lostSouls.enabled"] as? Bool, false)
         XCTAssertNil(target.values["tracker.intervalSeconds"])   // the v1 step does not run again
-        XCTAssertEqual(target.values[SettingsMigration.versionKey] as? Int, 2)
+        XCTAssertEqual(target.values[SettingsMigration.versionKey] as? Int, SettingsMigration.currentVersion)
         XCTAssertTrue(log.contains { $0.contains("lostSouls.enabled") })
     }
 
@@ -70,12 +70,26 @@ final class SettingsMigrationTests: XCTestCase {
         let target = MemoryStore([SettingsMigration.versionKey: 1, "reaper.enabled": "yes"])
         _ = SettingsMigration.run(target: target, tracker: nil, downloads: nil)
         XCTAssertNil(target.values["lostSouls.enabled"])   // wrong type → default (on)
-        XCTAssertEqual(target.values[SettingsMigration.versionKey] as? Int, 2)
+        XCTAssertEqual(target.values[SettingsMigration.versionKey] as? Int, SettingsMigration.currentVersion)
     }
 
     func testV2RunsOnlyOnce() {
         let target = MemoryStore([SettingsMigration.versionKey: 2, "reaper.enabled": false])
         _ = SettingsMigration.run(target: target, tracker: nil, downloads: nil)
         XCTAssertNil(target.values["lostSouls.enabled"])
+    }
+
+    func testV3CarriesBanishAutomaticallyIntoHoes() {
+        let target = MemoryStore([SettingsMigration.versionKey: 2, "lostSouls.autoBanish": true])
+        let log = SettingsMigration.run(target: target, tracker: nil, downloads: nil)
+        XCTAssertEqual(target.values["hoes.autoEndOrphans"] as? Bool, true)
+        XCTAssertTrue(log.contains { $0.contains("hoes.autoEndOrphans") })
+        XCTAssertEqual(target.values[SettingsMigration.versionKey] as? Int, 3)
+    }
+
+    func testV3NeverOverwritesHoes() {
+        let target = MemoryStore([SettingsMigration.versionKey: 2, "lostSouls.autoBanish": true, "hoes.autoEndOrphans": false])
+        _ = SettingsMigration.run(target: target, tracker: nil, downloads: nil)
+        XCTAssertEqual(target.values["hoes.autoEndOrphans"] as? Bool, false)
     }
 }
