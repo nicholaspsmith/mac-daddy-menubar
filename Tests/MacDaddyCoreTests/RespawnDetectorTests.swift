@@ -33,4 +33,17 @@ final class RespawnDetectorTests: XCTestCase {
         for pid in 200..<212 { d.record([rec(pid, "/bin/ps"), rec(pid + 1000, "<defunct>")]) }
         XCTAssertTrue(d.looping().isEmpty)
     }
+    func testReportsTheParentThatRestartsItAndALivePID() {
+        let d = RespawnDetector(windowSize: 12, minDistinct: 5, minChurnRatio: 5)
+        for pid in 100..<112 { d.record([ProcRec(pid: pid, ppid: pid < 102 ? 1 : 777, user: "nick", etime: "", comm: "crasher")]) }
+        let l = d.looping().first { $0.comm == "crasher" }
+        XCTAssertEqual(l?.parent, 777)
+        XCTAssertEqual(l?.livePID, 111)
+    }
+    func testIgnoresWhatFederalAgentsKills() {
+        let d = RespawnDetector(windowSize: 12, minDistinct: 5, minChurnRatio: 5)
+        for pid in 100..<112 { d.record([rec(pid, "/System/Library/photoanalysisd")]) }
+        XCTAssertFalse(d.looping().isEmpty)
+        XCTAssertTrue(d.looping(ignoring: ["photoanalysisd"]).isEmpty)
+    }
 }

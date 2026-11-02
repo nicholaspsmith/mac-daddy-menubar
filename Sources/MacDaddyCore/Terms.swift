@@ -119,6 +119,9 @@ public struct Terms: Equatable {
 
     // MARK: Processes
 
+    public func crashingOut(_ n: Int) -> String { "⚠ " + pick("Crashing out", "Crash-looping") + " (\(n))" }
+    public var quitting: String { pick("Pimp slapping", "Quitting") }
+    public func crashingOutTitle(name: String) -> String { "\(name) is " + pick("crashing out", "crash-looping") }
     public var topSpawners: String { pick("Welfare Queens", "Top Spawners") }
     /// A spawner's brood, grandchildren included: "1 child", "42 children".
     public func children(_ n: Int) -> String { n == 1 ? "1 child" : "\(n) children" }
