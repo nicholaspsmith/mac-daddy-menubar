@@ -8,6 +8,10 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.19.0] - 2026-11-02
+
+- The minute cue now appears one second earlier
+
 ## [1.18.0] - 2026-11-02
 
 - Street Walkers (Lost Souls) is folded into Hoes (CPU Hogs): an orphaned process burning over 50% CPU for 10 minutes is now a hoe with no pimp (an orphaned process), listed with the other hoes and tagged "· no pimp", with Pimp Slap and Spare. It still notifies you once
