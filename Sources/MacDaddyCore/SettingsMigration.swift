@@ -27,8 +27,11 @@ public final class MemoryStore: KeyValueStore {
 ///
 /// Version 2 (1.1.0): the Godot Reaper became Lost Souls, so `reaper.enabled`
 /// carries over to `lostSouls.enabled`.
+///
+/// Version 3 (1.18.0): Lost Souls folded into Hoes, so its Banish
+/// Automatically (`lostSouls.autoBanish`) becomes `hoes.autoEndOrphans`.
 public enum SettingsMigration {
-    public static let currentVersion = 2
+    public static let currentVersion = 3
     public static let versionKey = "migration.version"
     public static let trackerDomain = "com.nicholaspsmith.MediaTrackingKiller"
     public static let downloadsDomain = "com.nicholaspsmith.DownloadRecycler"
@@ -69,6 +72,9 @@ public enum SettingsMigration {
         }
         if version < 2 {
             copy(target, "reaper.enabled", "lostSouls.enabled", .bool)
+        }
+        if version < 3 {
+            copy(target, "lostSouls.autoBanish", "hoes.autoEndOrphans", .bool)
         }
 
         target.set(currentVersion, forKey: versionKey)

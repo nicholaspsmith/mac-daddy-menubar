@@ -20,7 +20,6 @@ final class App: NSObject, NSApplicationDelegate {
     private lazy var processWatch = ProcessWatch(notifier: notifier)
     private let tracker = TrackerKiller()
     private lazy var downloads = DownloadSweeper(notifier: notifier)
-    private lazy var lostSouls = LostSoulsDuty(notifier: notifier)
     private lazy var hoes = HoesDuty(notifier: notifier)
     /// ⌘Space for apps, math, conversions and emoji: Menu Crane, folded in. Off unless turned on.
     private let launcher = Launcher()
@@ -41,8 +40,8 @@ final class App: NSObject, NSApplicationDelegate {
         self?.redraw()
     })
 
-    private var cleanupDuties: [Duty] { [tracker, downloads, lostSouls, hoes] }
-    private var allDuties: [Duty] { [processWatch, tracker, downloads, lostSouls, hoes] }
+    private var cleanupDuties: [Duty] { [tracker, downloads, hoes] }
+    private var allDuties: [Duty] { [processWatch, tracker, downloads, hoes] }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         migrate()
@@ -131,7 +130,7 @@ final class App: NSObject, NSApplicationDelegate {
         guard let controller else { return }
         let mood = Mood.compute(
             fraction: processWatch.fraction,
-            anyCleanupEnabled: tracker.enabled || downloads.enabled || lostSouls.enabled || hoes.enabled,
+            anyCleanupEnabled: tracker.enabled || downloads.enabled || hoes.enabled,
             lastFlourish: lastFlourish, now: Date())
         // Pimp Mode is Menu Pimp himself; Normal Mode a plain symbol in the same colours.
         switch Mode.load(from: .standard) {

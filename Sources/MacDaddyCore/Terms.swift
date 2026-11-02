@@ -85,30 +85,24 @@ public struct Terms: Equatable {
     public func notAllowed(name: String, pid: Int) -> String { pick("Not allowed to pimp slap", "Not allowed to end") + " \(name) [\(pid)]" }
     public func changed(name: String) -> String { "\(name) changed — not " + pick("pimp slapped", "ended") }
 
-    // MARK: Lost Souls (Street Walkers)
+    // MARK: Hoes with no pimp (orphaned processes; Street Walkers until 1.18.0)
 
-    public var lostSouls: String { pick("Street Walkers", "Lost Souls") }
-    public func lostSoulsTitle(enabled: Bool, count: Int) -> String {
-        guard enabled else { return "\(lostSouls) — Off" }
-        let out = pick("on the street", "wandering")
-        return count == 0 ? "\(lostSouls) — none \(out)" : "\(lostSouls) — \(count) \(out)"
-    }
-    public var banishAutomatically: String { pick("Pimp Slap Automatically", "Banish Automatically") }
+    /// The tag on an orphan's row in Hoes.
+    public var orphanTag: String { pick("no pimp", "orphaned") }
+    public var autoEndOrphans: String { pick("Auto Pimp Slap Hoes With No Pimp", "Auto-End Orphaned Processes") }
     public var spare: String { "Spare" }
-    public var lostSoulFound: String { pick("Street walker", "Lost soul") }
-    public func lostSoulsFound(_ n: Int) -> String { "\(n) " + pick("street walkers", "lost souls") }
-    public func lostSoulBody(name: String, pid: Int, cpu: Int, minutes: Int) -> String {
+    public var orphanFound: String { pick("Hoe with no pimp", "Orphaned process") }
+    public func orphansFound(_ n: Int) -> String { "\(n) " + pick("hoes with no pimp", "orphaned processes") }
+    public func orphanBody(name: String, pid: Int, cpu: Int, minutes: Int) -> String {
         "\(name) (pid \(pid)) has been burning \(cpu)% CPU for \(minutes) min with no " + pick("pimp", "parent")
     }
-    public func lostSoulsBody(_ items: [String]) -> String {
-        pick("On the street", "Orphaned") + " and burning CPU: " + items.joined(separator: ", ")
+    public func orphansBody(_ items: [String]) -> String {
+        pick("No pimp", "Orphaned") + " and burning CPU: " + items.joined(separator: ", ")
     }
-    public var lostSoulBanished: String { pick("Street walker pimp slapped", "Lost soul banished") }
-    public func lostSoulsBanished(_ n: Int) -> String { "\(n) " + pick("street walkers pimp slapped", "lost souls banished") }
     public func banished(name: String, pid: Int, cpu: Int) -> String {
-        pick("Pimp slapped", "Ended") + " \(name) (pid \(pid)) after 30 min at \(cpu)% CPU"
+        pick("Pimp slapped", "Ended") + " \(name) (pid \(pid)), orphaned, after 30 min at \(cpu)% CPU"
     }
-    public func banishedMany(_ items: [String]) -> String { pick("Pimp slapped", "Ended") + " " + items.joined(separator: ", ") }
+    public func banishedMany(_ items: [String]) -> String { pick("Pimp slapped", "Ended") + " orphaned " + items.joined(separator: ", ") }
 
     // MARK: Media Tracking
 

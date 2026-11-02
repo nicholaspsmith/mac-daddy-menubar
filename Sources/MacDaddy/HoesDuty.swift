@@ -53,6 +53,8 @@ private final class ProcessFacts {
 
 /// Learns which third-party processes you force-quit while they pin the CPU
 /// and offers to end them for you next time. The UA watchdog's rules are built in.
+/// Also lists hoes with no pimp (orphans at a lower bar, `OrphanWatch`), which
+/// were Street Walkers until 1.18.0.
 final class HoesDuty: NSObject, Duty {
     var onSweep: ((Flourish) -> Void)?
     var onChange: (() -> Void)?
@@ -75,13 +77,16 @@ final class HoesDuty: NSObject, Duty {
     /// When Activity Monitor or the Force Quit window was last in front.
     private var forceQuitWindowAt: Date?
     private(set) var current: [Hoes.Hoe] = []
+    private let orphans: OrphanWatch
     private let logURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/MacDaddy/hoes.log")
     private let uaLogURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/state/ua-watchdog.log")
 
     init(notifier: Notifier) {
         self.notifier = notifier
         state = HoesState.load(from: defaults)
+        orphans = OrphanWatch(notifier: notifier)
         super.init()
+        orphans.onSweep = { [weak self] f in self?.onSweep?(f) }
         // The UA watchdog's own switch, if it was ever turned off, carries over.
         state.ensureBuiltIns(UAWatchdog.builtInRules, paused: defaults.object(forKey: "uaWatchdog.enabled") as? Bool == false)
         save()
@@ -96,6 +101,7 @@ final class HoesDuty: NSObject, Duty {
             defaults.set(newValue, forKey: "hoes.enabled")
             // Off and on again starts from nothing.
             hoes = Hoes(sampleInterval: sampleSeconds)
+            orphans.reset()
             generation += 1
             current = []; lastError = nil
             onChange?()
@@ -124,7 +130,9 @@ final class HoesDuty: NSObject, Duty {
     }
 
     func tick(now: Date) {
-        guard enabled, !inFlight, now.timeIntervalSince(lastSample) >= sampleSeconds - 0.5 else { return }
+        guard enabled else { return }
+        orphans.tick(now: now)
+        guard !inFlight, now.timeIntervalSince(lastSample) >= sampleSeconds - 0.5 else { return }
         lastSample = now
         if let id = NSWorkspace.shared.frontmostApplication?.bundleIdentifier, Self.forceQuitApps.contains(id) { forceQuitWindowAt = now }
         inFlight = true
@@ -232,24 +240,45 @@ final class HoesDuty: NSObject, Duty {
 
     // MARK: - Menu
 
-    var title: String {
-        terms.hoesTitle(enabled: enabled, count: current.count, suggestions: state.suggestions.count)
+    /// Orphans that aren't already listed as hoes (the same PID can be both).
+    private var extraOrphans: [LostSouls.Soul] {
+        let pids = Set(current.map(\.pid))
+        return orphans.current.filter { !pids.contains($0.pid) }
     }
-    var warning: String? { lastError }
-    var needsAttention: Bool { enabled && (!current.isEmpty || !state.suggestions.isEmpty) }
+    private var orphanPIDs: Set<Int> { Set(orphans.current.map(\.pid)) }
+
+    var title: String {
+        terms.hoesTitle(enabled: enabled, count: current.count + extraOrphans.count, suggestions: state.suggestions.count)
+    }
+    var warning: String? { lastError ?? (enabled ? orphans.lastError : nil) }
+    var needsAttention: Bool { enabled && (!current.isEmpty || !orphans.current.isEmpty || !state.suggestions.isEmpty) }
 
     func addMenuItems(to menu: NSMenu) {
         let terms = terms
         warningItems().forEach(menu.addItem)
         menu.addItem(toggleItem("Enabled", isOn: enabled, in: menu) { [weak self] in self?.enabled = $0 })
-        if !current.isEmpty || !state.suggestions.isEmpty { menu.addItem(.separator()) }
-        let hottest = current.sorted { $0.meanCPU > $1.meanCPU }
-        for h in hottest.prefix(menuLimit) {
-            let row = NSMenuItem(title: "\(h.name) [\(h.pid)]  —  \(Int(h.meanCPU.rounded()))% for \(h.minutes) min",
-                                 action: nil, keyEquivalent: "")
+        let extra = extraOrphans, noPimp = orphanPIDs
+        if !current.isEmpty || !extra.isEmpty || !state.suggestions.isEmpty { menu.addItem(.separator()) }
+        // Hoes and hoes with no pimp in one list, hottest first.
+        enum Row { case hoe(Hoes.Hoe), orphan(LostSouls.Soul) }
+        let rows: [(cpu: Double, row: Row)] = current.map { ($0.meanCPU, .hoe($0)) } + extra.map { ($0.meanCPU, .orphan($0)) }
+        let hottest = rows.sorted { $0.cpu > $1.cpu }
+        for r in hottest.prefix(menuLimit) {
             let sub = NSMenu()
-            sub.addItem(item(terms.end, #selector(endHoe(_:)), h.pid))
-            sub.addItem(item("Ignore", #selector(ignoreHoe(_:)), h.pid))
+            let row: NSMenuItem
+            switch r.row {
+            case .hoe(let h):
+                let tag = noPimp.contains(h.pid) ? " · \(terms.orphanTag)" : ""
+                row = NSMenuItem(title: "\(h.name) [\(h.pid)]  —  \(Int(h.meanCPU.rounded()))% for \(h.minutes) min\(tag)",
+                                 action: nil, keyEquivalent: "")
+                sub.addItem(item(terms.end, #selector(endHoe(_:)), h.pid))
+                sub.addItem(item("Ignore", #selector(ignoreHoe(_:)), h.pid))
+            case .orphan(let s):
+                row = NSMenuItem(title: "\(s.name) [\(s.pid)]  —  \(OrphanWatch.pct(s))% for \(s.minutes) min · \(terms.orphanTag)",
+                                 action: nil, keyEquivalent: "")
+                sub.addItem(item(terms.end, #selector(endOrphan(_:)), OrphanWatch.key(s)))
+                sub.addItem(item(terms.spare, #selector(spareOrphan(_:)), OrphanWatch.key(s)))
+            }
             row.submenu = sub
             menu.addItem(row)
         }
@@ -267,6 +296,9 @@ final class HoesDuty: NSObject, Duty {
             menu.addItem(row)
         }
         menu.addItem(.separator())
+        menu.addItem(ToggleMenuItem.make(title: terms.autoEndOrphans, isOn: orphans.autoEnd) { [weak self] on in
+            self?.orphans.autoEnd = on
+        })
         let rules = NSMenuItem(title: "Rules", action: nil, keyEquivalent: "")
         rules.submenu = rulesMenu()
         menu.addItem(rules)
@@ -409,6 +441,16 @@ final class HoesDuty: NSObject, Duty {
         append(["KILLED \(h.name) pid=\(h.pid) (ended from the menu at \(Int(h.meanCPU.rounded()))% for \(h.minutes) min)"], to: logURL)
         onSweep?(.hatTip)
         killLater(pid: h.pid, start: h.start)
+    }
+
+    @objc private func endOrphan(_ sender: NSMenuItem) {
+        guard let key = sender.representedObject as? String else { return }
+        orphans.end(key: key)
+    }
+
+    @objc private func spareOrphan(_ sender: NSMenuItem) {
+        guard let key = sender.representedObject as? String else { return }
+        orphans.spare(key: key)
     }
 
     @objc private func ignoreHoe(_ sender: NSMenuItem) {

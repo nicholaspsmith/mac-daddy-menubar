@@ -96,41 +96,30 @@ final class TermsTests: XCTestCase {
         XCTAssertEqual(n.changed(name: "x"), "x changed — not ended")
     }
 
-    func testLostSoulsAreStreetWalkersInPimpMode() {
-        XCTAssertEqual(p.lostSouls, "Street Walkers")
-        XCTAssertEqual(n.lostSouls, "Lost Souls")
-        XCTAssertEqual(p.lostSoulsTitle(enabled: false, count: 0), "Street Walkers — Off")
-        XCTAssertEqual(p.lostSoulsTitle(enabled: true, count: 0), "Street Walkers — none on the street")
-        XCTAssertEqual(p.lostSoulsTitle(enabled: true, count: 2), "Street Walkers — 2 on the street")
-        XCTAssertEqual(n.lostSoulsTitle(enabled: false, count: 0), "Lost Souls — Off")
-        XCTAssertEqual(n.lostSoulsTitle(enabled: true, count: 0), "Lost Souls — none wandering")
-        XCTAssertEqual(n.lostSoulsTitle(enabled: true, count: 2), "Lost Souls — 2 wandering")
-        XCTAssertEqual(p.banishAutomatically, "Pimp Slap Automatically")
-        XCTAssertEqual(n.banishAutomatically, "Banish Automatically")
+    func testOrphansAreHoesWithNoPimp() {
+        XCTAssertEqual(p.orphanTag, "no pimp")
+        XCTAssertEqual(n.orphanTag, "orphaned")
+        XCTAssertEqual(p.autoEndOrphans, "Auto Pimp Slap Hoes With No Pimp")
+        XCTAssertEqual(n.autoEndOrphans, "Auto-End Orphaned Processes")
         XCTAssertEqual(p.spare, "Spare")
-        XCTAssertEqual(n.spare, "Spare")
     }
 
-    func testLostSoulNotifications() {
-        XCTAssertEqual(p.lostSoulFound, "Street walker")
-        XCTAssertEqual(n.lostSoulFound, "Lost soul")
-        XCTAssertEqual(p.lostSoulsFound(3), "3 street walkers")
-        XCTAssertEqual(n.lostSoulsFound(3), "3 lost souls")
-        XCTAssertEqual(p.lostSoulBody(name: "x", pid: 7, cpu: 60, minutes: 10), "x (pid 7) has been burning 60% CPU for 10 min with no pimp")
-        XCTAssertEqual(n.lostSoulBody(name: "x", pid: 7, cpu: 60, minutes: 10), "x (pid 7) has been burning 60% CPU for 10 min with no parent")
-        XCTAssertEqual(p.lostSoulsBody(["a (60%)", "b (70%)"]), "On the street and burning CPU: a (60%), b (70%)")
-        XCTAssertEqual(n.lostSoulsBody(["a (60%)", "b (70%)"]), "Orphaned and burning CPU: a (60%), b (70%)")
-        XCTAssertEqual(p.lostSoulBanished, "Street walker pimp slapped")
-        XCTAssertEqual(n.lostSoulBanished, "Lost soul banished")
-        XCTAssertEqual(p.lostSoulsBanished(2), "2 street walkers pimp slapped")
-        XCTAssertEqual(n.lostSoulsBanished(2), "2 lost souls banished")
+    func testOrphanNotifications() {
+        XCTAssertEqual(p.orphanFound, "Hoe with no pimp")
+        XCTAssertEqual(n.orphanFound, "Orphaned process")
+        XCTAssertEqual(p.orphansFound(3), "3 hoes with no pimp")
+        XCTAssertEqual(n.orphansFound(3), "3 orphaned processes")
+        XCTAssertEqual(p.orphanBody(name: "x", pid: 7, cpu: 60, minutes: 10), "x (pid 7) has been burning 60% CPU for 10 min with no pimp")
+        XCTAssertEqual(n.orphanBody(name: "x", pid: 7, cpu: 60, minutes: 10), "x (pid 7) has been burning 60% CPU for 10 min with no parent")
+        XCTAssertEqual(p.orphansBody(["a (60%)", "b (70%)"]), "No pimp and burning CPU: a (60%), b (70%)")
+        XCTAssertEqual(n.orphansBody(["a (60%)", "b (70%)"]), "Orphaned and burning CPU: a (60%), b (70%)")
     }
 
-    func testLostSoulsBanished() {
-        XCTAssertEqual(p.banished(name: "x", pid: 7, cpu: 60), "Pimp slapped x (pid 7) after 30 min at 60% CPU")
-        XCTAssertEqual(n.banished(name: "x", pid: 7, cpu: 60), "Ended x (pid 7) after 30 min at 60% CPU")
-        XCTAssertEqual(p.banishedMany(["a (pid 1)", "b (pid 2)"]), "Pimp slapped a (pid 1), b (pid 2)")
-        XCTAssertEqual(n.banishedMany(["a (pid 1)", "b (pid 2)"]), "Ended a (pid 1), b (pid 2)")
+    func testOrphansEndedAutomatically() {
+        XCTAssertEqual(p.banished(name: "x", pid: 7, cpu: 60), "Pimp slapped x (pid 7), orphaned, after 30 min at 60% CPU")
+        XCTAssertEqual(n.banished(name: "x", pid: 7, cpu: 60), "Ended x (pid 7), orphaned, after 30 min at 60% CPU")
+        XCTAssertEqual(p.banishedMany(["a (pid 1)", "b (pid 2)"]), "Pimp slapped orphaned a (pid 1), b (pid 2)")
+        XCTAssertEqual(n.banishedMany(["a (pid 1)", "b (pid 2)"]), "Ended orphaned a (pid 1), b (pid 2)")
     }
 
     func testProcessCount() {

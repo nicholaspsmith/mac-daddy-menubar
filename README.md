@@ -19,7 +19,7 @@ It has two vocabularies: **Pimp Mode** (the default) and **Normal Mode** (see
 [Mode](#mode)). This README uses the Pimp Mode names with the Normal Mode name
 in brackets the first time.
 
-**Version 1.17.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
+**Version 1.18.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
@@ -28,7 +28,7 @@ In Pimp Mode the icon is the mascot, Menu Pimp. His hat shows the process count:
 - **Purple hat, cool** — plenty of headroom
 - **Amber hat, one drop of sweat** — the count is climbing toward the per-user limit
 - **Red hat, two drops of sweat** — close to the limit
-- **Hat tip** — for two seconds after the media-tracker killer, Street Walkers or Hoes kills something
+- **Hat tip** — for two seconds after the media-tracker killer or Hoes kills something
 - **Chain glint** — for two seconds after the Downloads sweep trashes files
 - **Asleep, grey, eyes closed, with a "z"** — every duty is paused (the hat keeps its warning colour)
 
@@ -54,8 +54,7 @@ launcher on, **Open Pimp Cane** follows. App-wide settings are in the
 | Processes | Live count against the per-UID limit, a two-minute sparkline, crash-looping processes, Skanky Ass Hoes (Top Spawners), zombies, Open Activity Monitor |
 | Media Tracking ▸ Enabled / Pimp Slap Now / Interval / Processes | Kills Apple's media-analysis daemons every 5 / 15 / 30 / 60 s; one toggle per daemon |
 | Downloads ▸ Enabled / Sweep Now / Keep Files For / Open Log | Moves files older than 7 / 14 / 30 / 60 / 90 days from `~/Downloads` to the Trash |
-| Street Walkers (Lost Souls) ▸ … | Orphaned processes burning CPU — see below |
-| Hoes (CPU Hogs) ▸ … | Third-party CPU hogs and learned kill rules — see below |
+| Hoes (CPU Hogs) ▸ … | Third-party CPU hogs, hoes with no pimp (orphaned processes), and learned kill rules — see below |
 | Open Pimp Cane (Open Launcher) | Opens the launcher panel; shown only while the launcher is on, with "⚠ Hotkey unavailable" above it when another app holds the hotkey |
 | Settings… | The Settings window, below |
 | Quit Mac Daddy | ⌘Q |
@@ -89,29 +88,27 @@ Checks every 30 minutes and sweeps at most once every 24 hours. **Sweep Now**
 runs one immediately. Files go to the Trash and can be restored; nothing is
 deleted outright.
 
-### Street Walkers (Lost Souls)
-
-Samples your processes every 30 s. A *street walker* is one of your processes
-that launchd adopted (parent PID 1) and that averaged over 50% CPU for 10
-minutes: a hung headless test run, or a script whose terminal closed. Time
-asleep doesn't count. Left out: apps, launchd jobs, XPC services and app
-extensions (Safari tabs, virtual machines), macOS's own programs, helpers that
-a background service or their own app is responsible for, normally orphaned
-daemons (`cfprefsd`, `mds`, `tmux`, `ollama`, …), and anything you **Spare**.
-
-Mac Daddy notifies you once and lists each as `name [pid] — X% for M min` (the
-eight hungriest, then "and N more…"). **Pimp Slap** checks it is still the
-same process, sends SIGTERM, then SIGKILL after 5 s. Nothing is killed unless
-you click it, or turn on **Pimp Slap Automatically** (Banish Automatically;
-off by default), which kills a street walker once it has qualified
-continuously for 30 minutes.
-
 ### Hoes (CPU Hogs)
 
 Samples your processes every 30 s. A *hoe* is a third-party process (anything
 not signed by Apple as part of macOS) at 80% CPU or more for 2 minutes. Each is
 listed as `name [pid] — X% for M min` with **Pimp Slap** and **Ignore**;
 being listed alone sends no notification.
+
+**Hoes with no pimp (orphaned processes).** Street Walkers (Lost Souls) until
+1.18.0. One of your own processes that launchd adopted (parent PID 1) is a hoe
+at a lower bar: over 50% CPU on average for 10 minutes, whoever signed it. Think
+of a hung headless test run, or a script whose terminal closed. Time asleep
+doesn't count. Left out: apps, launchd jobs, XPC services and app extensions
+(Safari tabs, virtual machines), macOS's system daemons, helpers that a
+background service or their own app is responsible for, normally orphaned
+daemons (`cfprefsd`, `mds`, `tmux`, `ollama`, …), and anything you **Spare**.
+Its row ends in "· no pimp" ("· orphaned"), with **Pimp Slap** and **Spare**,
+and unlike other hoes it notifies you once. **Pimp Slap** checks it is still
+the same process, sends SIGTERM, then SIGKILL after 5 s. **Auto Pimp Slap Hoes
+With No Pimp** (Auto-End Orphaned Processes; off by default) ends one once it
+has qualified continuously for 30 minutes. A process that is both kinds of hoe
+is listed once, as a hoe, with the tag.
 
 **Learned rules.** When a hoe disappears while still hot — you force-quit it,
 or killed it here — Mac Daddy guesses a rule and asks once, e.g. "Auto pimp
@@ -208,11 +205,11 @@ defaults keys and code use the same names in either mode.
 | Pimp Mode | Normal Mode |
 |---|---|
 | Hoes, on the clock | CPU Hogs, running hot |
-| Street Walkers, on the street, with no pimp | Lost Souls, wandering, with no parent |
+| Hoe with no pimp | Orphaned process |
 | Skanky Ass Hoes | Top Spawners |
 | Pimp Slap, pimp slapped | End / Kill / Quit, ended / killed |
 | Pimp Slap Hard | Force Quit |
-| Pimp Slap Now, Restart After Pimp Slap, Pimp Slap Automatically | Kill Now, Restart After Kill, Banish Automatically |
+| Pimp Slap Now, Restart After Pimp Slap, Auto Pimp Slap Hoes With No Pimp | Kill Now, Restart After Kill, Auto-End Orphaned Processes |
 | Auto pimp slap …?, Last pimp slap, Pimp slaps today | Auto-kill …?, Last kill, Kills today |
 | Pimp Cane | Launcher |
 
