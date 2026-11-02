@@ -12,14 +12,22 @@ let package = Package(
     platforms: [.macOS(.v13)],
     dependencies: [
         .package(path: "../StatusItemKit"),
+        .package(path: "../HotkeyKit"),
     ],
     targets: [
         .target(name: "MacDaddyCore"),
+        // The launcher (⌘Space: apps, math, conversions, emoji), formerly Menu Crane.
+        .target(name: "LauncherCore", dependencies: [.product(name: "HotkeyKit", package: "HotkeyKit")]),
         .executableTarget(
             name: "MacDaddy",
-            dependencies: ["MacDaddyCore", .product(name: "StatusItemKit", package: "StatusItemKit")],
+            dependencies: [
+                "MacDaddyCore", "LauncherCore",
+                .product(name: "StatusItemKit", package: "StatusItemKit"),
+                .product(name: "HotkeyKit", package: "HotkeyKit"),
+            ],
             path: "Sources/MacDaddy"
         ),
         .testTarget(name: "MacDaddyCoreTests", dependencies: ["MacDaddyCore"]),
+        .testTarget(name: "LauncherCoreTests", dependencies: ["LauncherCore"]),
     ]
 )

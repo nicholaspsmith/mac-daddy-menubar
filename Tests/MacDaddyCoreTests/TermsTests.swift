@@ -23,6 +23,13 @@ final class TermsTests: XCTestCase {
         }
     }
 
+    func testLauncher() {
+        XCTAssertEqual(p.launcher, "Pimp Cane")
+        XCTAssertEqual(n.launcher, "Launcher")
+        XCTAssertEqual(n.launcherToggle, "Use the Launcher")
+        XCTAssertEqual(p.openLauncher(keys: "⌘Space"), "Open Pimp Cane (⌘Space)")
+    }
+
     func testHoes() {
         XCTAssertEqual(p.hoes, "Hoes")
         XCTAssertEqual(n.hoes, "CPU Hogs")

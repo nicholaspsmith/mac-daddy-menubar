@@ -9,14 +9,17 @@
 A macOS menu-bar app that looks after your processes and files. It kills
 Apple's media-analysis daemons, trashes stale downloads, finds orphaned
 processes burning CPU, learns which CPU hogs you force-quit and quits them for
-you, and warns as your process count nears the per-user limit. Built on
-[StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit).
+you, and warns as your process count nears the per-user limit. Turn on the
+**Pimp Cane** (Launcher) and ⌘Space also opens apps, does arithmetic, converts
+units and finds emoji; it was Menu Crane until 1.17.0. Built on
+[StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) and
+[HotkeyKit](https://github.com/nicholaspsmith/HotkeyKit).
 
 It has two vocabularies: **Pimp Mode** (the default) and **Normal Mode** (see
 [Mode](#mode)). This README uses the Pimp Mode names with the Normal Mode name
 in brackets the first time.
 
-**Version 1.14.1** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
+**Version 1.17.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
@@ -42,9 +45,9 @@ In Normal Mode the icon is a plain sparkles symbol in the same colours.
 Processes sits at the top. Each other duty is one summary line ("Downloads —
 swept 10/1/26", "Hoes — 1 on the clock (running hot) · 1 suggestion") with its
 controls in a submenu. The line goes bold when something needs you, and red
-when the duty is failing; the submenu then starts with the reason. App-wide
-settings sit in the Settings submenu (StatusItemKit's `SettingsMenu`) at the
-foot of the menu, above Quit.
+when the duty is failing; the submenu then starts with the reason. With the
+launcher on, **Open Pimp Cane** follows. App-wide settings are in the
+**Settings…** window (⌘,) at the foot of the menu, above Quit.
 
 | Item | Purpose |
 |---|---|
@@ -53,12 +56,24 @@ foot of the menu, above Quit.
 | Downloads ▸ Enabled / Sweep Now / Keep Files For / Open Log | Moves files older than 7 / 14 / 30 / 60 / 90 days from `~/Downloads` to the Trash |
 | Street Walkers (Lost Souls) ▸ … | Orphaned processes burning CPU — see below |
 | Hoes (CPU Hogs) ▸ … | Third-party CPU hogs and learned kill rules — see below |
-| Settings ▸ Mode ▸ Pimp Mode / Normal Mode | Mascot and Pimp Mode wording, or a plain symbol and standard terms |
-| Settings ▸ Start at Login | `SMAppService`, no launchd agent |
-| Settings ▸ Version | The running build's version (grey) |
+| Open Pimp Cane (Open Launcher) | Opens the launcher panel; shown only while the launcher is on, with "⚠ Hotkey unavailable" above it when another app holds the hotkey |
+| Settings… | The Settings window, below |
 | Quit Mac Daddy | ⌘Q |
 
 Settings live in the `defaults` domain `com.nicholaspsmith.MacDaddy`.
+
+### Settings
+
+**Settings…** (⌘,) opens one window. It replaced the old Settings submenu:
+
+- **General**: **Mode** (Pimp Mode / Normal Mode) and **Start at Login**
+  (`SMAppService`, no launchd agent)
+- **Pimp Cane** (Launcher): **Use the Pimp Cane** turns the launcher on and
+  off (off on a new install), then its **Hotkey** (**Record…**), **Units**,
+  **Emoji skin tone**, **Edit Emoji Aliases…** and **Panel position ▸ Reset**
+- the running build's version
+
+The window closes with ⌘W or Esc.
 
 ### Processes
 
@@ -125,10 +140,68 @@ Apollo audio comes back: an orphaned `UA Mixer Helper` at 80% on sight,
 everything else logs to `~/Library/Logs/MacDaddy/hoes.log`. Hoes runs only
 while Mac Daddy is running.
 
+### Pimp Cane (Launcher)
+
+Menu Crane, folded into Mac Daddy in 1.17.0. **⌘Space** opens a panel over the
+frontmost app, including a full-screen one. Drag the panel's background to
+move it; it reopens where you left it, as long as that spot is still on a
+connected screen. Turning the launcher off releases the hotkey.
+
+| Key | Does |
+|---|---|
+| ⌘Space | Open the panel; press again to close it |
+| ↑ / ↓, ⌃N / ⌃P | Move the selection |
+| ↩ | Run the selected row's default action |
+| ⌥↩ | Run its alternate action: reveal an app in Finder, copy a conversion with its unit |
+| ⌘↩ | Search in Spotlight: close the panel and type the query into the system Spotlight panel |
+| ⌘1 … ⌘9 | Run that numbered row directly |
+| Esc | Clear the query, then close the panel |
+| ⌘W | Close the panel |
+| ⌘, | Open Settings |
+
+**Search in Spotlight.** ⌘↩ hands exactly what you typed to macOS's own
+Spotlight panel (Siri's "Search or Ask" on macOS 27): the panel closes,
+Spotlight opens with its shortcut (read from System Settings ▸ Keyboard ▸
+Keyboard Shortcuts ▸ Spotlight, ⌥Space if unset), and the query is typed into
+its field. It never presses Return. This posts keystrokes, so it needs Mac
+Daddy allowed in **System Settings ▸ Privacy & Security ▸ Accessibility**.
+Without that, or if Spotlight's shortcut is off or its panel doesn't appear
+within 3 s, the query stays in the panel with the reason in the footer.
+
+**Hotkey.** **Record…** in Settings, then press the shortcut (it needs ⌘, ⌥,
+⌃ or ⇧). If another app holds it, Settings shows a red warning, the previous
+hotkey stays active, and the menu shows **⚠ Hotkey unavailable**; Mac Daddy
+retries every 5 s until it is free.
+
+**Emoji.** Type `e` or `emoji` and press ↩ to open the grid, most recently
+used first. ↩ or a click copies the selected emoji and closes the panel. ⌘K
+edits the selected emoji's aliases inline; ⌘⇧S cycles the default skin tone.
+Esc, ⌫ on an empty search, or the **‹ Back** chip return to the main list. A
+query matches regardless of word order (`fingers crossed`, `crossed fingers`,
+`cross fing` and `luck` all find 🤞), and your own aliases outrank Unicode's
+names.
+
+**Math.** `+ - * /` and `x` as a synonym for `*`, with parentheses, decimals
+and a leading minus. ↩ copies the bare answer.
+
+**Conversions.** `72f to c`, `12 fl oz in pt`, `100 km/h`: temperature, mass,
+volume, length, speed and acceleration. An explicit `to <unit>` always wins.
+Otherwise a bare value follows **Units**: **US Imperial** (the default)
+converts metric values to US customary and US values with a natural metric
+pairing to metric (`72f` → °C, `100 km/h` → mph); **Metric** converts US
+values to metric and leaves bare metric values alone. ⌥↩ copies the answer
+with its unit.
+
+**Files.** `~/Library/Application Support/MacDaddy/Launcher/aliases.json`
+holds your emoji aliases (`{ "🤓": ["nerd"] }`; hand-editable, reloaded
+live), and `usage.json` beside it app launch counts and recent emoji, for
+ranking. Everything else is in the `launcher.` keys of the defaults domain.
+No network calls.
+
 ## Mode
 
 **Pimp Mode** shows Menu Pimp and uses his words. **Normal Mode** shows the
-sparkles symbol and uses standard terms. Switching under **Settings ▸ Mode** applies at
+sparkles symbol and uses standard terms. Switching in **Settings… ▸ Mode** applies at
 once to the icon, the menu, notifications and the process window. Log files,
 defaults keys and code use the same names in either mode.
 
@@ -141,19 +214,23 @@ defaults keys and code use the same names in either mode.
 | Pimp Slap Hard | Force Quit |
 | Pimp Slap Now, Restart After Pimp Slap, Pimp Slap Automatically | Kill Now, Restart After Kill, Banish Automatically |
 | Auto pimp slap …?, Last pimp slap, Pimp slaps today | Auto-kill …?, Last kill, Kills today |
+| Pimp Cane | Launcher |
 
 ## Requirements
 
 - macOS 13+, Swift 5.9 / Xcode Command Line Tools
-- [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) checked out
-  as a **sibling** directory (local SPM path dependency)
+- [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) and
+  [HotkeyKit](https://github.com/nicholaspsmith/HotkeyKit) checked out as
+  **sibling** directories (local SPM path dependencies)
 - On first run, allow **Downloads folder access** when prompted
+- **Accessibility** only for the launcher's ⌘↩ (Search in Spotlight)
 
 ## Install
 
 ```sh
 cd ~/Code
 git clone https://github.com/nicholaspsmith/StatusItemKit.git
+git clone https://github.com/nicholaspsmith/HotkeyKit.git
 git clone https://github.com/nicholaspsmith/mac-daddy-menubar.git
 cd mac-daddy-menubar
 ./install.sh
@@ -172,14 +249,18 @@ them if present:
 |---|---|
 | Media Tracking Killer, Download Recycler, Process Monitor | quits it, turns its login item off, removes its `~/Applications` link |
 | godot-headless-reaper (launchd agent) | boots it out, removes its plist, moves its script to the Trash |
+| Menu Crane | Mac Daddy itself, on every launch: quits it and turns its login item off. Its link and bundle are left for parity or you to remove |
 | ua-watchdog (launchd agent, from Apollo Monitor) | boots it out, removes its plist, heartbeat and state files, moves its script to the Trash, keeps its log. If the agent was disabled, the built-in UA rules start paused |
 
 On first launch Mac Daddy imports the Media Tracking Killer and Download
 Recycler settings, and a previous choice of the plain icon becomes Normal Mode.
+If Menu Crane is installed or left settings behind, Mac Daddy also copies its
+hotkey, units, skin tone, panel position, aliases and usage (never over its
+own) and turns the launcher on.
 
 ### Start at Login
 
-Toggle it from Settings ▸ Start at Login, or from the shell:
+Toggle it in Settings… ▸ Start at Login, or from the shell:
 
 ```sh
 "$HOME/Applications/Mac Daddy.app/Contents/MacOS/MacDaddy" --login on       # or: off, status
@@ -196,6 +277,7 @@ process's own bundle, so the command must be the *installed* binary. A bare
 osascript -e 'quit app "Mac Daddy"'
 rm "$HOME/Applications/Mac Daddy.app"
 defaults delete com.nicholaspsmith.MacDaddy
+rm -r "$HOME/Library/Application Support/MacDaddy"   # the launcher's aliases and usage
 ```
 
 Turn Start at Login off before removing the link; otherwise remove the entry
@@ -205,12 +287,19 @@ under System Settings ▸ General ▸ Login Items.
 
 ```sh
 swift build
-swift test               # MacDaddyCore: detection, rules, migration, wording
+swift test               # MacDaddyCore and LauncherCore
 scripts/build-app.sh     # builds build/Mac Daddy.app
 ```
 
 `MacDaddyCore` holds the detection and rule logic with no AppKit dependency;
-the `MacDaddy` target is the menu, icon and duties.
+`LauncherCore` the launcher's (query parsing, matching, calculator, converter,
+emoji and alias stores, usage ranking, panel placement, the Menu Crane
+migration); the `MacDaddy` target is the menu, icon, duties, Settings window
+and the launcher's panel (`Sources/MacDaddy/Launcher`).
+
+To update the emoji data (`Resources/bundle/emoji.json`, committed; never
+fetched at runtime), bump the pinned versions and run
+`EMOJI_VERSION=16.0 CLDR_TAG=release-46 scripts/update-emoji-data.sh`.
 
 ## The menu-bar suite
 
@@ -226,18 +315,18 @@ cooperative hiding so no icon strands another.
 | [Apollo Monitor](https://github.com/nicholaspsmith/apollo-monitor-menubar) | Apollo audio-interface monitor level |
 | [Battery Time](https://github.com/nicholaspsmith/battery-time-menubar) | Time remaining, power mode, and 24h usage |
 | [VPN & DNS](https://github.com/nicholaspsmith/vpn-dns-menubar) | An iguana for Mullvad + Tailscale state, with a DNS watcher |
-| **Mac Daddy** | Kills media trackers, trashes stale downloads, reaps hung processes, watches the UA mixer engine, and sweats as your process count climbs |
+| **Mac Daddy** | Kills media trackers, trashes stale downloads, reaps hung processes, watches the UA mixer engine, sweats as your process count climbs, and (optionally) a ⌘Space launcher for apps, arithmetic, unit conversions and emoji |
 | [KeyLight](https://github.com/nicholaspsmith/keylight-menubar) | Ctrl+brightness keys remapped to keyboard backlight |
 | [Homestead](https://github.com/nicholaspsmith/home-assistant-menubar) | Home Assistant dashboards and device controls in the menu |
 | [Panes](https://github.com/nicholaspsmith/panes-menubar) | Window shortcuts, a layout grid and edge snapping, plus external-monitor brightness and contrast, the built-in screen from dimmer than macOS allows to XDR, and Night Shift |
 | [SoundChain](https://github.com/nicholaspsmith/soundchain-menubar) | One chain of Audio Unit effects over all system audio |
-| [Menu Crane](https://github.com/nicholaspsmith/menu-crane) | A ⌘Space launcher for apps, arithmetic, unit conversions and emoji |
 | [MacRecorder](https://github.com/nicholaspsmith/MacRecorder) | Screen recording with system audio |
 | [Barn](https://github.com/nicholaspsmith/menubar-barn) | macOS 26 and earlier only: hides a block of status icons by width (on macOS 27, use System Settings ▸ Menu Bar) |
 
 | Framework | |
 |---|---|
 | [StatusItemKit](https://github.com/nicholaspsmith/StatusItemKit) | Status-item lifecycle, polling, menus, meter and mascot icons, the shared Icon picker |
+| [HotkeyKit](https://github.com/nicholaspsmith/HotkeyKit) | Global keyboard and media-key bindings |
 | [HotkeyKit](https://github.com/nicholaspsmith/HotkeyKit) | CGEventTap engine for intercepting and remapping global keys |
 
 Install the whole suite on a fresh Mac with
