@@ -16,6 +16,10 @@ Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 - Media Tracking is **Federal Agents** in Pimp Mode (still Media Tracking in Normal Mode)
 - The Processes section now lines up with the rest of the menu instead of being indented
 
+## [1.19.0] - 2026-11-02
+
+- The minute cue now appears one second earlier
+
 ## [1.18.0] - 2026-11-02
 
 - Street Walkers (Lost Souls) is folded into Hoes (CPU Hogs): an orphaned process burning over 50% CPU for 10 minutes is now a hoe with no pimp (an orphaned process), listed with the other hoes and tagged "· no pimp", with Pimp Slap and Spare. It still notifies you once
