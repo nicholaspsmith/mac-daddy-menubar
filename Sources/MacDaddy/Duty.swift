@@ -33,7 +33,6 @@ extension Duty {
         guard let error else { return [h] }
         let e = NSMenuItem(title: "⚠ \(error)", action: nil, keyEquivalent: "")
         e.attributedTitle = NSAttributedString(string: "⚠ \(error)", attributes: [.foregroundColor: NSColor.systemRed])
-        e.indentationLevel = 1
         return [h, e]
     }
 }
