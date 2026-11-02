@@ -157,7 +157,7 @@ final class ProcessWatch: NSObject, Duty {
         let spawners = topSpawners(latestProcs, topN: 10)
         if spawners.isEmpty { sm.addItem(NSMenuItem(title: "(none)", action: nil, keyEquivalent: "")) }
         for s in spawners {
-            let i = NSMenuItem(title: "\(s.comm) [\(s.pid)]  —  \(s.descendants) desc", action: #selector(showDetail(_:)), keyEquivalent: "")
+            let i = NSMenuItem(title: "\(s.comm) [\(s.pid)]  —  \(terms.children(s.descendants))", action: #selector(showDetail(_:)), keyEquivalent: "")
             i.target = self; i.representedObject = NSNumber(value: s.pid)
             sm.addItem(i)
         }

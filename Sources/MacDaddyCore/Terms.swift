@@ -113,7 +113,9 @@ public struct Terms: Equatable {
 
     // MARK: Processes
 
-    public var topSpawners: String { pick("Skanky Ass Hoes", "Top Spawners") }
+    public var topSpawners: String { pick("Welfare Queens", "Top Spawners") }
+    /// A spawner's brood, grandchildren included: "1 child", "42 children".
+    public func children(_ n: Int) -> String { n == 1 ? "1 child" : "\(n) children" }
     public func processCountHigh(count: Int, limit: Int, pct: Int) -> String {
         "\(count) of \(limit) processes (\(pct)%). " + pick("Pimp slap", "Kill") + " some before fork() starts failing."
     }

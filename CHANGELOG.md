@@ -8,6 +8,11 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.20.0] - 2026-11-02
+
+- Skanky Ass Hoes is now **Welfare Queens** (still Top Spawners in Normal Mode), since they have so many children
+- Each row counts its children ("42 children", was "42 desc"), and the detail window's list is headed Children (grandchildren included)
+
 ## [1.18.0] - 2026-11-02
 
 - Street Walkers (Lost Souls) is folded into Hoes (CPU Hogs): an orphaned process burning over 50% CPU for 10 minutes is now a hoe with no pimp (an orphaned process), listed with the other hoes and tagged "· no pimp", with Pimp Slap and Spare. It still notifies you once

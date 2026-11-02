@@ -19,7 +19,7 @@ It has two vocabularies: **Pimp Mode** (the default) and **Normal Mode** (see
 [Mode](#mode)). This README uses the Pimp Mode names with the Normal Mode name
 in brackets the first time.
 
-**Version 1.18.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
+**Version 1.20.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
@@ -51,7 +51,7 @@ launcher on, **Open Pimp Cane** follows. App-wide settings are in the
 
 | Item | Purpose |
 |---|---|
-| Processes | Live count against the per-UID limit, a two-minute sparkline, crash-looping processes, Skanky Ass Hoes (Top Spawners), zombies, Open Activity Monitor |
+| Processes | Live count against the per-UID limit, a two-minute sparkline, crash-looping processes, Welfare Queens (Top Spawners), zombies, Open Activity Monitor |
 | Media Tracking ▸ Enabled / Pimp Slap Now / Interval / Processes | Kills Apple's media-analysis daemons every 5 / 15 / 30 / 60 s; one toggle per daemon |
 | Downloads ▸ Enabled / Sweep Now / Keep Files For / Open Log | Moves files older than 7 / 14 / 30 / 60 / 90 days from `~/Downloads` to the Trash |
 | Hoes (CPU Hogs) ▸ … | Third-party CPU hogs, hoes with no pimp (orphaned processes), and learned kill rules — see below |
@@ -76,8 +76,9 @@ The window closes with ⌘W or Esc.
 
 ### Processes
 
-Skanky Ass Hoes (Top Spawners) lists the processes with the most descendants.
-Each opens a detail window with **Pimp Slap** (SIGTERM) and **Pimp Slap Hard**
+Welfare Queens (Top Spawners) lists the processes with the most children
+(grandchildren included), each with its count, e.g. "node [812] — 42 children".
+Each opens a detail window listing those children, with **Pimp Slap** (SIGTERM) and **Pimp Slap Hard**
 (Force Quit), which asks first and sends SIGKILL. When one of your own
 non-system processes is holding zombies, the menu offers "Pimp Slap
 `<parent>` to reap N", which also asks first.
@@ -206,7 +207,7 @@ defaults keys and code use the same names in either mode.
 |---|---|
 | Hoes, on the clock | CPU Hogs, running hot |
 | Hoe with no pimp | Orphaned process |
-| Skanky Ass Hoes | Top Spawners |
+| Welfare Queens | Top Spawners |
 | Pimp Slap, pimp slapped | End / Kill / Quit, ended / killed |
 | Pimp Slap Hard | Force Quit |
 | Pimp Slap Now, Restart After Pimp Slap, Auto Pimp Slap Hoes With No Pimp | Kill Now, Restart After Kill, Auto-End Orphaned Processes |

@@ -42,8 +42,12 @@ final class TermsTests: XCTestCase {
     }
 
     func testTopSpawners() {
-        XCTAssertEqual(p.topSpawners, "Skanky Ass Hoes")
+        XCTAssertEqual(p.topSpawners, "Welfare Queens")
         XCTAssertEqual(n.topSpawners, "Top Spawners")
+        for t in [p, n] {
+            XCTAssertEqual(t.children(1), "1 child")
+            XCTAssertEqual(t.children(42), "42 children")
+        }
     }
 
     func testEndAndKillNow() {
