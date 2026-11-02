@@ -51,10 +51,11 @@ launcher on, **Open Pimp Cane** follows. App-wide settings are in the
 
 | Item | Purpose |
 |---|---|
-| Processes | Live count against the per-UID limit, a two-minute sparkline, crash-looping processes, Welfare Queens (Top Spawners), zombies, Open Activity Monitor |
+| Processes | Live count against the per-UID limit, a two-minute sparkline, crash-looping processes, zombies, Open Activity Monitor |
 | Federal Agents (Media Tracking) ▸ Enabled / Pimp Slap Now / Interval / Processes | Kills Apple's media-analysis daemons every 5 / 15 / 30 / 60 s; one toggle per daemon |
 | Downloads ▸ Enabled / Launder Now (Sweep Now) / Keep Files For / Open Log | Moves files older than 7 / 14 / 30 / 60 / 90 days from `~/Downloads` to the Trash |
 | Hoes (CPU Hogs) ▸ … | Third-party CPU hogs, hoes with no pimp (orphaned processes), and learned kill rules — see below |
+| Welfare Queens (Top Spawners) ▸ … | The process with the most children on the line; the ten biggest in the submenu, each opening a detail window |
 | Open Pimp Cane (Open Launcher) | Opens the launcher panel; shown only while the launcher is on, with "⚠ Hotkey unavailable" above it when another app holds the hotkey |
 | Settings… | The Settings window, below |
 | Quit Mac Daddy | ⌘Q |

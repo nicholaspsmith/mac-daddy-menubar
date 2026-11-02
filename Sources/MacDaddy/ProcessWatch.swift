@@ -152,18 +152,6 @@ final class ProcessWatch: NSObject, Duty {
             menu.addItem(h)
         }
 
-        let spawn = NSMenuItem(title: terms.topSpawners, action: nil, keyEquivalent: "")
-        let sm = NSMenu()
-        let spawners = topSpawners(latestProcs, topN: 10)
-        if spawners.isEmpty { sm.addItem(NSMenuItem(title: "(none)", action: nil, keyEquivalent: "")) }
-        for s in spawners {
-            let i = NSMenuItem(title: "\(s.comm) [\(s.pid)]  —  \(terms.children(s.descendants))", action: #selector(showDetail(_:)), keyEquivalent: "")
-            i.target = self; i.representedObject = NSNumber(value: s.pid)
-            sm.addItem(i)
-        }
-        spawn.submenu = sm
-        menu.addItem(spawn)
-
         if zombies.count > 0 {
             let z = NSMenuItem(title: "Zombies  \(zombies.count)", action: nil, keyEquivalent: "")
             menu.addItem(z)
@@ -177,6 +165,23 @@ final class ProcessWatch: NSObject, Duty {
         let am = NSMenuItem(title: "Open Activity Monitor", action: #selector(openActivityMonitor), keyEquivalent: "")
         am.target = self
         menu.addItem(am)
+    }
+
+    /// Welfare Queens (Top Spawners): one summary line in the duties section, naming the
+    /// process with the most children; its submenu lists the top ten.
+    func welfareQueensItem() -> NSMenuItem {
+        let spawners = topSpawners(latestProcs, topN: 10)
+        let summary = spawners.first.map { "\(displayName($0.comm)), \(terms.children($0.descendants))" } ?? "none"
+        let spawn = NSMenuItem(title: "\(terms.topSpawners) — \(summary)", action: nil, keyEquivalent: "")
+        let sm = NSMenu()
+        if spawners.isEmpty { sm.addItem(NSMenuItem(title: "(none)", action: nil, keyEquivalent: "")) }
+        for s in spawners {
+            let i = NSMenuItem(title: "\(s.comm) [\(s.pid)]  —  \(terms.children(s.descendants))", action: #selector(showDetail(_:)), keyEquivalent: "")
+            i.target = self; i.representedObject = NSNumber(value: s.pid)
+            sm.addItem(i)
+        }
+        spawn.submenu = sm
+        return spawn
     }
 
     @objc private func showDetail(_ sender: NSMenuItem) {

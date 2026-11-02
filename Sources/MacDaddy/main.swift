@@ -167,6 +167,7 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         // Each cleanup duty is one summary line; its controls open as a submenu.
         cleanupDuties.forEach { menu.addItem($0.sectionItem()) }
+        menu.addItem(processWatch.welfareQueensItem())
         if launcher.isEnabled {
             menu.addItem(.separator())
             if let failure = launcher.hotkeyFailure {
