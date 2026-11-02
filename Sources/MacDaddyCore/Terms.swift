@@ -104,10 +104,16 @@ public struct Terms: Equatable {
     }
     public func banishedMany(_ items: [String]) -> String { pick("Pimp slapped", "Ended") + " orphaned " + items.joined(separator: ", ") }
 
+    // MARK: Downloads
+
+    public var swept: String { pick("laundered", "swept") }
+    public var sweepNow: String { pick("Launder Now", "Sweep Now") }
+
     // MARK: Media Tracking
 
     public func trackerTitle(enabled: Bool, kills: Int) -> String {
-        enabled ? "Media Tracking — \(kills) " + pick("pimp slapped", "killed") : "Media Tracking — Off"
+        let name = pick("Federal Agents", "Media Tracking")
+        return enabled ? "\(name) — \(kills) " + pick("pimp slapped", "killed") : "\(name) — Off"
     }
     public func killNow(count: Int) -> String { pick("Pimp Slap Now", "Kill Now") + " (\(count) this session)" }
 

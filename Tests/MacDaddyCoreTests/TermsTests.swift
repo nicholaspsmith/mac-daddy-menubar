@@ -41,6 +41,13 @@ final class TermsTests: XCTestCase {
         XCTAssertEqual(n.hoesTitle(enabled: true, count: 3, suggestions: 0), "CPU Hogs — 3 running hot")
     }
 
+    func testDownloads() {
+        XCTAssertEqual(p.swept, "laundered")
+        XCTAssertEqual(n.swept, "swept")
+        XCTAssertEqual(p.sweepNow, "Launder Now")
+        XCTAssertEqual(n.sweepNow, "Sweep Now")
+    }
+
     func testTopSpawners() {
         XCTAssertEqual(p.topSpawners, "Welfare Queens")
         XCTAssertEqual(n.topSpawners, "Top Spawners")
@@ -55,10 +62,10 @@ final class TermsTests: XCTestCase {
         XCTAssertEqual(n.end, "End")
         XCTAssertEqual(p.killNow(count: 3), "Pimp Slap Now (3 this session)")
         XCTAssertEqual(n.killNow(count: 3), "Kill Now (3 this session)")
-        XCTAssertEqual(p.trackerTitle(enabled: true, kills: 4), "Media Tracking — 4 pimp slapped")
+        XCTAssertEqual(p.trackerTitle(enabled: true, kills: 4), "Federal Agents — 4 pimp slapped")
         XCTAssertEqual(n.trackerTitle(enabled: true, kills: 4), "Media Tracking — 4 killed")
         XCTAssertEqual(n.trackerTitle(enabled: false, kills: 4), "Media Tracking — Off")
-        XCTAssertEqual(p.trackerTitle(enabled: false, kills: 4), "Media Tracking — Off")
+        XCTAssertEqual(p.trackerTitle(enabled: false, kills: 4), "Federal Agents — Off")
         XCTAssertEqual(p.restartAfterKill, "Restart After Pimp Slap")
         XCTAssertEqual(n.restartAfterKill, "Restart After Kill")
     }

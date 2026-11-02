@@ -28,8 +28,8 @@ In Pimp Mode the icon is the mascot, Menu Pimp. His hat shows the process count:
 - **Purple hat, cool** — plenty of headroom
 - **Amber hat, one drop of sweat** — the count is climbing toward the per-user limit
 - **Red hat, two drops of sweat** — close to the limit
-- **Hat tip** — for two seconds after the media-tracker killer or Hoes kills something
-- **Chain glint** — for two seconds after the Downloads sweep trashes files
+- **Hat tip** — for two seconds after Federal Agents (the media-tracker killer) or Hoes kills something
+- **Chain glint** — for two seconds after Downloads launders (sweeps) files into the Trash
 - **Asleep, grey, eyes closed, with a "z"** — every duty is paused (the hat keeps its warning colour)
 
 Now and then he grins and a gold gleam crosses his teeth (550 ms). When
@@ -43,7 +43,7 @@ In Normal Mode the icon is a plain sparkles symbol in the same colours.
 ## Menu
 
 Processes sits at the top. Each other duty is one summary line ("Downloads —
-swept 10/1/26", "Hoes — 1 on the clock (running hot) · 1 suggestion") with its
+laundered (swept) 10/1/26", "Hoes — 1 on the clock (running hot) · 1 suggestion") with its
 controls in a submenu. The line goes bold when something needs you, and red
 when the duty is failing; the submenu then starts with the reason. With the
 launcher on, **Open Pimp Cane** follows. App-wide settings are in the
@@ -52,8 +52,8 @@ launcher on, **Open Pimp Cane** follows. App-wide settings are in the
 | Item | Purpose |
 |---|---|
 | Processes | Live count against the per-UID limit, a two-minute sparkline, crash-looping processes, Welfare Queens (Top Spawners), zombies, Open Activity Monitor |
-| Media Tracking ▸ Enabled / Pimp Slap Now / Interval / Processes | Kills Apple's media-analysis daemons every 5 / 15 / 30 / 60 s; one toggle per daemon |
-| Downloads ▸ Enabled / Sweep Now / Keep Files For / Open Log | Moves files older than 7 / 14 / 30 / 60 / 90 days from `~/Downloads` to the Trash |
+| Federal Agents (Media Tracking) ▸ Enabled / Pimp Slap Now / Interval / Processes | Kills Apple's media-analysis daemons every 5 / 15 / 30 / 60 s; one toggle per daemon |
+| Downloads ▸ Enabled / Launder Now (Sweep Now) / Keep Files For / Open Log | Moves files older than 7 / 14 / 30 / 60 / 90 days from `~/Downloads` to the Trash |
 | Hoes (CPU Hogs) ▸ … | Third-party CPU hogs, hoes with no pimp (orphaned processes), and learned kill rules — see below |
 | Open Pimp Cane (Open Launcher) | Opens the launcher panel; shown only while the launcher is on, with "⚠ Hotkey unavailable" above it when another app holds the hotkey |
 | Settings… | The Settings window, below |
@@ -85,7 +85,7 @@ non-system processes is holding zombies, the menu offers "Pimp Slap
 
 ### Downloads
 
-Checks every 30 minutes and sweeps at most once every 24 hours. **Sweep Now**
+Checks every 30 minutes and launders (sweeps) at most once every 24 hours. **Launder Now**
 runs one immediately. Files go to the Trash and can be restored; nothing is
 deleted outright.
 
@@ -212,6 +212,8 @@ defaults keys and code use the same names in either mode.
 | Pimp Slap Hard | Force Quit |
 | Pimp Slap Now, Restart After Pimp Slap, Auto Pimp Slap Hoes With No Pimp | Kill Now, Restart After Kill, Auto-End Orphaned Processes |
 | Auto pimp slap …?, Last pimp slap, Pimp slaps today | Auto-kill …?, Last kill, Kills today |
+| Federal Agents | Media Tracking |
+| Laundered, Launder Now | Swept, Sweep Now |
 | Pimp Cane | Launcher |
 
 ## Requirements

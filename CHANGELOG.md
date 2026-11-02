@@ -12,6 +12,8 @@ Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 
 - Skanky Ass Hoes is now **Welfare Queens** (still Top Spawners in Normal Mode), since they have so many children
 - Each row counts its children ("42 children", was "42 desc"), and the detail window's list is headed Children (grandchildren included)
+- Downloads are **laundered** in Pimp Mode: "Downloads — laundered 11/2/26" and **Launder Now** (still swept and Sweep Now in Normal Mode)
+- Media Tracking is **Federal Agents** in Pimp Mode (still Media Tracking in Normal Mode)
 
 ## [1.18.0] - 2026-11-02
 
