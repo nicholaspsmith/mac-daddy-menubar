@@ -8,6 +8,13 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.17.0] - 2026-11-02
+
+- Menu Crane is now part of Mac Daddy: the **Pimp Cane** (Launcher in Normal Mode) opens apps, does arithmetic, converts units and finds emoji on ⌘Space, with ⌘↩ handing the query to Spotlight. Off on a new install
+- **Settings…** (⌘,) opens a Settings window in place of the Settings submenu: Mode, Start at Login, and the launcher's on/off switch, hotkey, units, skin tone, emoji aliases and panel position
+- On every launch Mac Daddy quits a running Menu Crane and turns off its login item. The first time, it copies Menu Crane's hotkey, units, skin tone, panel position, emoji aliases and usage, and turns the launcher on
+- The launcher's ⌘↩ (Search in Spotlight) needs Mac Daddy allowed in Accessibility
+
 ## [1.16.0] - 2026-11-01
 
 - The minute cue no longer waits for Monitor Lizard, so the apps after it each move up a second

@@ -41,6 +41,12 @@ public struct Terms: Equatable {
     public var modeMenu: String { "Mode" }
     public func modeName(_ m: Mode) -> String { m == .pimp ? "Pimp Mode" : "Normal Mode" }
 
+    // MARK: Launcher (formerly Menu Crane)
+
+    public var launcher: String { pick("Pimp Cane", "Launcher") }
+    public var launcherToggle: String { "Use the \(launcher)" }
+    public func openLauncher(keys: String) -> String { "Open \(launcher) (\(keys))" }
+
     // MARK: Hoes (CPU Hogs)
 
     public var hoes: String { pick("Hoes", "CPU Hogs") }

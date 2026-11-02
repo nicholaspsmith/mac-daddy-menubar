@@ -5,6 +5,8 @@
 // Copyright (c) 2026 Nicholas Smith
 
 import AppKit
+import HotkeyKit
+import LauncherCore
 import os
 @_exported import MacDaddyCore
 import StatusItemKit
@@ -20,6 +22,12 @@ final class App: NSObject, NSApplicationDelegate {
     private lazy var downloads = DownloadSweeper(notifier: notifier)
     private lazy var lostSouls = LostSoulsDuty(notifier: notifier)
     private lazy var hoes = HoesDuty(notifier: notifier)
+    /// ⌘Space for apps, math, conversions and emoji: Menu Crane, folded in. Off unless turned on.
+    private let launcher = Launcher()
+    private let menuCraneCutover = MenuCraneCutover()
+    private lazy var settings = SettingsWindowController(model: SettingsModel(launcher: launcher) { [weak self] mode in
+        self?.setMode(mode)
+    })
     private var lastFlourish: (Flourish, Date)?
     /// Once a minute, in his turn with the other animated mascots, he grins and
     /// a gold gleam crosses his teeth. Progress 0...1, linear; 0 when not grinning.
@@ -41,6 +49,10 @@ final class App: NSObject, NSApplicationDelegate {
         retireReaperAgent()
         retireUAWatchdogAgent()
         notifier.requestAuthorization()
+        EditMenu.install()
+        launcher.onOpenSettings = { [weak self] in self?.openSettings() }
+        // Menu Crane holds ⌘Space until it has quit; the launcher starts after.
+        menuCraneCutover.run { [weak self] in self?.launcher.start() }
         for d in allDuties {
             d.onSweep = { [weak self] f in self?.flourish(f) }
             d.onChange = { [weak self] in self?.redraw() }
@@ -64,6 +76,7 @@ final class App: NSObject, NSApplicationDelegate {
     private func tick() {
         let now = Date()
         allDuties.forEach { $0.tick(now: now) }
+        launcher.poll()
         redraw()
     }
 
@@ -155,22 +168,33 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         // Each cleanup duty is one summary line; its controls open as a submenu.
         cleanupDuties.forEach { menu.addItem($0.sectionItem()) }
-        SettingsMenu.addFooter(to: menu, appName: "Mac Daddy", items: { [self] settings in
-            let mode = Mode.load(from: .standard), terms = Terms(mode)
-            let modeItem = NSMenuItem(title: terms.modeMenu, action: nil, keyEquivalent: "")
-            let mm = NSMenu()
-            for m in Mode.allCases {
-                let i = NSMenuItem(title: terms.modeName(m), action: #selector(pickMode(_:)), keyEquivalent: "")
-                i.target = self; i.representedObject = m.rawValue; i.state = m == mode ? .on : .off
-                mm.addItem(i)
+        if launcher.isEnabled {
+            menu.addItem(.separator())
+            if let failure = launcher.hotkeyFailure {
+                let warn = NSMenuItem(title: "⚠ Hotkey unavailable — \(failure)", action: nil, keyEquivalent: "")
+                warn.attributedTitle = NSAttributedString(string: warn.title, attributes: [.foregroundColor: NSColor.systemRed])
+                warn.isEnabled = false
+                menu.addItem(warn)
             }
-            modeItem.submenu = mm
-            settings.addItem(modeItem)
-        })
+            let open = NSMenuItem(title: terms.openLauncher(keys: TriggerText.describe(launcher.trigger)),
+                                  action: #selector(openLauncher), keyEquivalent: "")
+            open.target = self
+            menu.addItem(open)
+        }
+        // The foot: Settings… (the window that replaced the Settings submenu), then Quit.
+        menu.addItem(.separator())
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+        let quit = NSMenuItem(title: "Quit Mac Daddy", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quit.target = NSApp
+        menu.addItem(quit)
     }
 
-    @objc private func pickMode(_ s: NSMenuItem) {
-        guard let raw = s.representedObject as? String, let mode = Mode(rawValue: raw) else { return }
+    @objc private func openLauncher() { launcher.toggle() }
+    @objc private func openSettings() { settings.show() }
+
+    private func setMode(_ mode: Mode) {
         mode.save(to: .standard)
         if mode == .normal { grinAnimation.cancel(); grin = 0 }
         redraw()
