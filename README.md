@@ -19,7 +19,7 @@ It has two vocabularies: **Pimp Mode** (the default) and **Normal Mode** (see
 [Mode](#mode)). This README uses the Pimp Mode names with the Normal Mode name
 in brackets the first time.
 
-**Version 1.20.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
+**Version 1.21.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
@@ -47,24 +47,24 @@ laundered (swept) 10/1/26", "Hoes — 1 on the clock (running hot) · 1 suggesti
 controls in a submenu. The line goes bold when something needs you, and red
 when the duty is failing; the submenu then starts with the reason. With the
 launcher on, **Open Pimp Cane** follows. App-wide settings are in the
-**Settings…** window (⌘,) at the foot of the menu, above Quit.
+**Preferences…** window (⌘,) at the foot of the menu, above Quit.
 
 | Item | Purpose |
 |---|---|
-| Processes | Live count against the per-UID limit, a two-minute sparkline, crash-looping processes, zombies, Open Activity Monitor |
+| Processes | Live count against the per-UID limit, a two-minute sparkline, processes crashing out (crash-looping), zombies, Open Activity Monitor |
 | Federal Agents (Media Tracking) ▸ Enabled / Pimp Slap Now / Interval / Processes | Kills Apple's media-analysis daemons every 5 / 15 / 30 / 60 s; one toggle per daemon |
 | Downloads ▸ Enabled / Launder Now (Sweep Now) / Keep Files For / Open Log | Moves files older than 7 / 14 / 30 / 60 / 90 days from `~/Downloads` to the Trash |
 | Hoes (CPU Hogs) ▸ … | Third-party CPU hogs, hoes with no pimp (orphaned processes), and learned kill rules — see below |
 | Welfare Queens (Top Spawners) ▸ … | The process with the most children on the line; the ten biggest in the submenu, each opening a detail window |
 | Open Pimp Cane (Open Launcher) | Opens the launcher panel; shown only while the launcher is on, with "⚠ Hotkey unavailable" above it when another app holds the hotkey |
-| Settings… | The Settings window, below |
+| Preferences… | The Preferences window, below |
 | Quit Mac Daddy | ⌘Q |
 
 Settings live in the `defaults` domain `com.nicholaspsmith.MacDaddy`.
 
-### Settings
+### Preferences
 
-**Settings…** (⌘,) opens one window. It replaced the old Settings submenu:
+**Preferences…** (⌘,) opens one window. It replaced the old Settings submenu:
 
 - **General**: **Mode** (Pimp Mode / Normal Mode) and **Start at Login**
   (`SMAppService`, no launchd agent)
@@ -76,6 +76,23 @@ Settings live in the `defaults` domain `com.nicholaspsmith.MacDaddy`.
 The window closes with ⌘W or Esc.
 
 ### Processes
+
+**⚠ Crashing out (Crash-looping)** appears when something keeps dying and
+being restarted: one name, a new PID every few seconds. Each row says what
+restarts it. Ending such a process does nothing, since it comes straight back,
+so clicking a row offers to stop whatever restarts it, and asks first:
+
+- **Your launchd agent** → unloads it (`launchctl bootout gui/<uid>/<label>`)
+  until you next log in or its app loads it again
+- **An iOS Simulator** (`launchd_sim`) → shuts the simulators down
+  (`xcrun simctl shutdown all`)
+- **One of your processes** (a script or app in a loop) → Pimp Slap (Quit) it
+- **A macOS system service, or someone else's process** → nothing Mac Daddy
+  may stop; it says so
+
+If the process left a crash report in the last day, **Show Crash Report**
+opens it; that usually says why. What Federal Agents kills is never listed,
+since bringing it back is launchd doing its job.
 
 Welfare Queens (Top Spawners) lists the processes with the most children
 (grandchildren included), each with its count, e.g. "node [812] — 42 children".
@@ -156,7 +173,7 @@ connected screen. Turning the launcher off releases the hotkey.
 | ⌘1 … ⌘9 | Run that numbered row directly |
 | Esc | Clear the query, then close the panel |
 | ⌘W | Close the panel |
-| ⌘, | Open Settings |
+| ⌘, | Open Preferences |
 
 **Search in Spotlight.** ⌘↩ hands exactly what you typed to macOS's own
 Spotlight panel (Siri's "Search or Ask" on macOS 27): the panel closes,
@@ -167,8 +184,8 @@ Daddy allowed in **System Settings ▸ Privacy & Security ▸ Accessibility**.
 Without that, or if Spotlight's shortcut is off or its panel doesn't appear
 within 3 s, the query stays in the panel with the reason in the footer.
 
-**Hotkey.** **Record…** in Settings, then press the shortcut (it needs ⌘, ⌥,
-⌃ or ⇧). If another app holds it, Settings shows a red warning, the previous
+**Hotkey.** **Record…** in Preferences, then press the shortcut (it needs ⌘, ⌥,
+⌃ or ⇧). If another app holds it, Preferences shows a red warning, the previous
 hotkey stays active, and the menu shows **⚠ Hotkey unavailable**; Mac Daddy
 retries every 5 s until it is free.
 
@@ -200,7 +217,7 @@ No network calls.
 ## Mode
 
 **Pimp Mode** shows Menu Pimp and uses his words. **Normal Mode** shows the
-sparkles symbol and uses standard terms. Switching in **Settings… ▸ Mode** applies at
+sparkles symbol and uses standard terms. Switching in **Preferences… ▸ Mode** applies at
 once to the icon, the menu, notifications and the process window. Log files,
 defaults keys and code use the same names in either mode.
 
@@ -261,7 +278,7 @@ own) and turns the launcher on.
 
 ### Start at Login
 
-Toggle it in Settings… ▸ Start at Login, or from the shell:
+Toggle it in Preferences… ▸ Start at Login, or from the shell:
 
 ```sh
 "$HOME/Applications/Mac Daddy.app/Contents/MacOS/MacDaddy" --login on       # or: off, status
@@ -295,7 +312,7 @@ scripts/build-app.sh     # builds build/Mac Daddy.app
 `MacDaddyCore` holds the detection and rule logic with no AppKit dependency;
 `LauncherCore` the launcher's (query parsing, matching, calculator, converter,
 emoji and alias stores, usage ranking, panel placement, the Menu Crane
-migration); the `MacDaddy` target is the menu, icon, duties, Settings window
+migration); the `MacDaddy` target is the menu, icon, duties, Preferences window
 and the launcher's panel (`Sources/MacDaddy/Launcher`).
 
 To update the emoji data (`Resources/bundle/emoji.json`, committed; never

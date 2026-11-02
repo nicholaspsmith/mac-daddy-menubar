@@ -8,6 +8,13 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.21.0] - 2026-11-02
+
+- Crash-looping is **Crashing out** in Pimp Mode, and each row says what keeps restarting the process
+- Clicking a row fixes it, after asking: ending a crash-looping process does nothing (it comes straight back), so Mac Daddy stops what restarts it. Your launchd agent is unloaded until you next log in, iOS Simulators are shut down, and a script or app of yours that keeps starting it is pimp slapped (quit). A macOS system service is left alone, with the reason. **Show Crash Report** opens its latest crash report when there is one
+- What Federal Agents (Media Tracking) kills no longer shows as crashing out: launchd restarting it is expected. It also hits the iOS Simulator's copies, which is what put photoanalysisd on the list
+- Settings… is now **Preferences…** (⌘,), and its window is Mac Daddy Preferences
+
 ## [1.20.0] - 2026-11-02
 
 - Skanky Ass Hoes is now **Welfare Queens** (still Top Spawners in Normal Mode), since they have so many children

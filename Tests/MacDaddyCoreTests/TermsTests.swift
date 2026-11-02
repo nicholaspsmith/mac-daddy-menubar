@@ -48,6 +48,14 @@ final class TermsTests: XCTestCase {
         XCTAssertEqual(n.sweepNow, "Sweep Now")
     }
 
+    func testCrashingOut() {
+        XCTAssertEqual(p.crashingOut(2), "⚠ Crashing out (2)")
+        XCTAssertEqual(n.crashingOut(2), "⚠ Crash-looping (2)")
+        XCTAssertEqual(p.crashingOutTitle(name: "bash"), "bash is crashing out")
+        XCTAssertEqual(p.quitting, "Pimp slapping")
+        XCTAssertEqual(n.quitting, "Quitting")
+    }
+
     func testTopSpawners() {
         XCTAssertEqual(p.topSpawners, "Welfare Queens")
         XCTAssertEqual(n.topSpawners, "Top Spawners")

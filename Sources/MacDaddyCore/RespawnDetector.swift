@@ -27,7 +27,8 @@ import Foundation
 // and `<defunct>` (a state, not an identity — every reaped zombie ends
 // up there regardless of original name).
 public final class RespawnDetector {
-    private var snapshots: [[String: Set<Int>]] = []
+    /// Per poll: comm → (pid → ppid).
+    private var snapshots: [[String: [Int: Int]]] = []
     private let windowSize: Int
     private let minDistinct: Int
     private let minChurnRatio: Int
@@ -41,42 +42,53 @@ public final class RespawnDetector {
     }
 
     public func record(_ procs: [ProcRec]) {
-        var byComm: [String: Set<Int>] = [:]
+        var byComm: [String: [Int: Int]] = [:]
         for p in procs {
-            byComm[p.comm, default: []].insert(p.pid)
+            byComm[p.comm, default: [:]][p.pid] = p.ppid
         }
         snapshots.append(byComm)
         if snapshots.count > windowSize { snapshots.removeFirst() }
     }
 
-    public struct Looping {
+    public struct Looping: Equatable {
         public let comm: String
         public let distinct: Int
         public let peak: Int
+        /// The PID that started most of the instances: whatever keeps restarting it.
+        public let parent: Int
+        /// A PID of it alive at the latest poll, if any.
+        public let livePID: Int?
 
-        public init(comm: String, distinct: Int, peak: Int) {
+        public init(comm: String, distinct: Int, peak: Int, parent: Int = 1, livePID: Int? = nil) {
             self.comm = comm
             self.distinct = distinct
             self.peak = peak
+            self.parent = parent
+            self.livePID = livePID
         }
     }
 
-    public func looping() -> [Looping] {
-        var union: [String: Set<Int>] = [:]
+    /// `ignoring`: basenames restarted on purpose, e.g. what Federal Agents
+    /// (Media Tracking) is killing on its interval, which launchd brings back.
+    public func looping(ignoring: Set<String> = []) -> [Looping] {
+        var union: [String: [Int: Int]] = [:]
         var peak: [String: Int] = [:]
         for snap in snapshots {
             for (c, pids) in snap {
-                union[c, default: []].formUnion(pids)
+                union[c, default: [:]].merge(pids) { a, _ in a }
                 peak[c] = max(peak[c] ?? 0, pids.count)
             }
         }
+        let latest = snapshots.last ?? [:]
         return union.compactMap { (c, pids) -> Looping? in
             let basename = (c as NSString).lastPathComponent
-            if Self.excluded.contains(basename) { return nil }
+            if Self.excluded.contains(basename) || ignoring.contains(basename) { return nil }
             let distinct = pids.count
             let p = max(peak[c] ?? 1, 1)
             guard distinct > minDistinct, distinct / p >= minChurnRatio else { return nil }
-            return Looping(comm: c, distinct: distinct, peak: p)
+            let parents = Dictionary(grouping: pids.values, by: { $0 }).mapValues(\.count)
+            let parent = parents.max { ($0.value, -$0.key) < ($1.value, -$1.key) }?.key ?? 1
+            return Looping(comm: c, distinct: distinct, peak: p, parent: parent, livePID: latest[c]?.keys.max())
         }
         .sorted { $0.distinct > $1.distinct }
     }

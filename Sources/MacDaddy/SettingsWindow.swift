@@ -177,7 +177,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             // own; without this the window opens as just its title bar.
             hosting.sizingOptions = [.preferredContentSize]
             let w = EscClosableWindow(contentViewController: hosting)
-            w.title = "Mac Daddy Settings"
+            w.title = "Mac Daddy Preferences"
             w.styleMask.remove(.resizable)
             w.isReleasedWhenClosed = false
             w.delegate = self
