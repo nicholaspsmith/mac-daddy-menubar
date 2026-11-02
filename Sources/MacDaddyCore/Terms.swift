@@ -104,16 +104,24 @@ public struct Terms: Equatable {
     }
     public func banishedMany(_ items: [String]) -> String { pick("Pimp slapped", "Ended") + " orphaned " + items.joined(separator: ", ") }
 
+    // MARK: Downloads
+
+    public var swept: String { pick("laundered", "swept") }
+    public var sweepNow: String { pick("Launder Now", "Sweep Now") }
+
     // MARK: Media Tracking
 
     public func trackerTitle(enabled: Bool, kills: Int) -> String {
-        enabled ? "Media Tracking — \(kills) " + pick("pimp slapped", "killed") : "Media Tracking — Off"
+        let name = pick("Federal Agents", "Media Tracking")
+        return enabled ? "\(name) — \(kills) " + pick("pimp slapped", "killed") : "\(name) — Off"
     }
     public func killNow(count: Int) -> String { pick("Pimp Slap Now", "Kill Now") + " (\(count) this session)" }
 
     // MARK: Processes
 
-    public var topSpawners: String { pick("Skanky Ass Hoes", "Top Spawners") }
+    public var topSpawners: String { pick("Welfare Queens", "Top Spawners") }
+    /// A spawner's brood, grandchildren included: "1 child", "42 children".
+    public func children(_ n: Int) -> String { n == 1 ? "1 child" : "\(n) children" }
     public func processCountHigh(count: Int, limit: Int, pct: Int) -> String {
         "\(count) of \(limit) processes (\(pct)%). " + pick("Pimp slap", "Kill") + " some before fork() starts failing."
     }

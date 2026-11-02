@@ -8,6 +8,15 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.20.0] - 2026-11-02
+
+- Skanky Ass Hoes is now **Welfare Queens** (still Top Spawners in Normal Mode), since they have so many children
+- Each row counts its children ("42 children", was "42 desc"), and the detail window's list is headed Children (grandchildren included)
+- Downloads are **laundered** in Pimp Mode: "Downloads — laundered 11/2/26" and **Launder Now** (still swept and Sweep Now in Normal Mode)
+- Media Tracking is **Federal Agents** in Pimp Mode (still Media Tracking in Normal Mode)
+- The Processes section now lines up with the rest of the menu instead of being indented
+- Welfare Queens moves down beside Hoes as its own line, naming the process with the most children ("Welfare Queens — node, 42 children")
+
 ## [1.19.0] - 2026-11-02
 
 - The minute cue now appears one second earlier

@@ -95,9 +95,9 @@ final class DownloadSweeper: NSObject, Duty {
 
     var title: String {
         guard enabled else { return "Downloads — Off" }
-        guard lastSweep != .distantPast else { return "Downloads — not swept yet" }
+        guard lastSweep != .distantPast else { return "Downloads — not \(terms.swept) yet" }
         let f = DateFormatter(); f.dateStyle = .short; f.timeStyle = .none
-        return "Downloads — swept \(f.string(from: lastSweep))"
+        return "Downloads — \(terms.swept) \(f.string(from: lastSweep))"
     }
     var warning: String? { lastError }
 
@@ -109,7 +109,7 @@ final class DownloadSweeper: NSObject, Duty {
         menu.addItem(toggleItem("Enabled", isOn: enabled, in: menu) { [weak self] in self?.enabled = $0 })
         let f = DateFormatter(); f.dateStyle = .short; f.timeStyle = .short
         let last = lastSweep == .distantPast ? "never" : f.string(from: lastSweep)
-        let run = NSMenuItem(title: "Sweep Now (last: \(last), \(trashedLastSweep) trashed)", action: #selector(runNow), keyEquivalent: "")
+        let run = NSMenuItem(title: "\(terms.sweepNow) (last: \(last), \(trashedLastSweep) trashed)", action: #selector(runNow), keyEquivalent: "")
         run.target = self
         menu.addItem(run)
         let keep = NSMenuItem(title: "Keep Files For", action: nil, keyEquivalent: "")

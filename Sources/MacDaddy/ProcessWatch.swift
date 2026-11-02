@@ -137,7 +137,7 @@ final class ProcessWatch: NSObject, Duty {
         var spark = history.sparkline()
         if let r = history.range, r.max > r.min { spark += "   \(r.min)→\(r.max)" }
         let sparkItem = NSMenuItem()
-        sparkItem.view = MenuBuilder.textView(spark, font: mono, leftPad: 34)
+        sparkItem.view = MenuBuilder.textView(spark, font: mono)
         menu.addItem(sparkItem)
 
         let loops = respawn.looping()
@@ -149,35 +149,39 @@ final class ProcessWatch: NSObject, Duty {
                 sub.addItem(NSMenuItem(title: "\(displayName(l.comm))  —  \(l.distinct) PIDs / peak \(l.peak) live  (in \(respawnWindow * Int(pollSeconds))s)", action: nil, keyEquivalent: ""))
             }
             h.submenu = sub
-            menu.addItem(indented(h))
+            menu.addItem(h)
         }
-
-        let spawn = NSMenuItem(title: terms.topSpawners, action: nil, keyEquivalent: "")
-        let sm = NSMenu()
-        let spawners = topSpawners(latestProcs, topN: 10)
-        if spawners.isEmpty { sm.addItem(NSMenuItem(title: "(none)", action: nil, keyEquivalent: "")) }
-        for s in spawners {
-            let i = NSMenuItem(title: "\(s.comm) [\(s.pid)]  —  \(s.descendants) desc", action: #selector(showDetail(_:)), keyEquivalent: "")
-            i.target = self; i.representedObject = NSNumber(value: s.pid)
-            sm.addItem(i)
-        }
-        spawn.submenu = sm
-        menu.addItem(indented(spawn))
 
         if zombies.count > 0 {
             let z = NSMenuItem(title: "Zombies  \(zombies.count)", action: nil, keyEquivalent: "")
-            menu.addItem(indented(z))
+            menu.addItem(z)
         }
         if let p = zombies.quittable {
             let q = NSMenuItem(title: terms.reapItem(name: displayName(p.comm), pid: p.pid, zombies: p.zombies), action: #selector(quitZombieParent(_:)), keyEquivalent: "")
             q.target = self; q.representedObject = p
-            q.indentationLevel = 2
             menu.addItem(q)
         }
 
         let am = NSMenuItem(title: "Open Activity Monitor", action: #selector(openActivityMonitor), keyEquivalent: "")
         am.target = self
-        menu.addItem(indented(am))
+        menu.addItem(am)
+    }
+
+    /// Welfare Queens (Top Spawners): one summary line in the duties section, naming the
+    /// process with the most children; its submenu lists the top ten.
+    func welfareQueensItem() -> NSMenuItem {
+        let spawners = topSpawners(latestProcs, topN: 10)
+        let summary = spawners.first.map { "\(displayName($0.comm)), \(terms.children($0.descendants))" } ?? "none"
+        let spawn = NSMenuItem(title: "\(terms.topSpawners) — \(summary)", action: nil, keyEquivalent: "")
+        let sm = NSMenu()
+        if spawners.isEmpty { sm.addItem(NSMenuItem(title: "(none)", action: nil, keyEquivalent: "")) }
+        for s in spawners {
+            let i = NSMenuItem(title: "\(s.comm) [\(s.pid)]  —  \(terms.children(s.descendants))", action: #selector(showDetail(_:)), keyEquivalent: "")
+            i.target = self; i.representedObject = NSNumber(value: s.pid)
+            sm.addItem(i)
+        }
+        spawn.submenu = sm
+        return spawn
     }
 
     @objc private func showDetail(_ sender: NSMenuItem) {
