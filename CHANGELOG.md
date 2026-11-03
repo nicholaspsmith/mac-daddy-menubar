@@ -8,6 +8,12 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.24.0] - 2026-11-03
+
+- Preferences are now in a dedicated window (⌘,) with a grouped form, login toggle, and icon picker, replacing the old Settings submenu.
+- Menus stay open after selecting an option (except Quit and "…" items), and new collapsible sections let you hide groups of items.
+- Read-only information rows in menus now always appear greyed out, even when added while the menu is open.
+
 ## [1.23.0] - 2026-11-03
 
 - Picking an option leaves the menu open: Pimp Slap Now (Kill Now), Launder Now (Sweep Now), an interval or how long to keep downloads, a rule's threshold or duration, Yes / No on a suggestion, and Pimp Slap (End) / Ignore / Spare on a hoe. Ticks move and counts update in place; the duty's line follows
