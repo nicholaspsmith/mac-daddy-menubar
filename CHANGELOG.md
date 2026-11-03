@@ -10,8 +10,9 @@ Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 
 ## [1.22.0] - 2026-11-02
 
-- Apollo Monitor's icon now displays the current level in grey when it cannot be controlled (due to missing Accessibility permissions or connectivity issues), allowing you to monitor the level even when changes are disabled.
-- The minute cue now triggers one second earlier.
+- Holding modifier keys like ⌘⌥ now works correctly for navigation keys (arrows, Home, End, Page Up, Page Down, Forward Delete, Help); the `fn` flag is no longer incorrectly included in these combinations.
+- The Apollo Monitor icon in the menu bar now displays the current level in grey when Accessibility permissions are not granted or the engine is unreachable, instead of going dark, so you can still see the level while it is unchangeable.
+- The minute cue no longer waits for Menu Crane, causing Panes to move up by one second.
 
 ## [1.21.0] - 2026-11-02
 
