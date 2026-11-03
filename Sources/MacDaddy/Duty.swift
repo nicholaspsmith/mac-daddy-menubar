@@ -71,6 +71,14 @@ extension Duty {
         }
     }
 
+    /// Rewrites the duty's line in the top-level menu from any item in its
+    /// submenus, after an action that changed it while the menu stays open.
+    func refreshSectionTitle(from item: NSMenuItem) {
+        var menu = item.menu
+        while let up = menu?.supermenu, up.supermenu != nil { menu = up }
+        if let line = menu?.parentItem { applySectionTitle(to: line) }
+    }
+
     /// A red "⚠ …" line for the top of a duty's submenu, when it is failing.
     func warningItems() -> [NSMenuItem] {
         guard let warning else { return [] }

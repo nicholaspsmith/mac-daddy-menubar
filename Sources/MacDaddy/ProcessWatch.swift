@@ -156,25 +156,24 @@ final class ProcessWatch: NSObject, Duty {
                 let i = NSMenuItem(title: "\(displayName(l.comm))  —  restarted \(l.distinct)× in \(respawnWindow * Int(pollSeconds))s by \(by)",
                                    action: #selector(fixCrashing(_:)), keyEquivalent: "")
                 i.target = self; i.representedObject = LoopBox(l)
-                sub.addItem(i)
+                sub.addItem(MenuPolicy.closing(i))   // asks first, in an alert
             }
             h.submenu = sub
             menu.addItem(h)
         }
 
         if zombies.count > 0 {
-            let z = NSMenuItem(title: "Zombies  \(zombies.count)", action: nil, keyEquivalent: "")
-            menu.addItem(z)
+            menu.addItem(InfoMenuItem.make("Zombies  \(zombies.count)"))
         }
         if let p = zombies.quittable {
             let q = NSMenuItem(title: terms.reapItem(name: displayName(p.comm), pid: p.pid, zombies: p.zombies), action: #selector(quitZombieParent(_:)), keyEquivalent: "")
             q.target = self; q.representedObject = p
-            menu.addItem(q)
+            menu.addItem(MenuPolicy.closing(q))   // asks first, in an alert
         }
 
         let am = NSMenuItem(title: "Open Activity Monitor", action: #selector(openActivityMonitor), keyEquivalent: "")
         am.target = self
-        menu.addItem(am)
+        menu.addItem(MenuPolicy.closing(am))   // another app comes to the front
     }
 
     /// Welfare Queens (Top Spawners): one summary line in the duties section, naming the
@@ -184,11 +183,11 @@ final class ProcessWatch: NSObject, Duty {
         let summary = spawners.first.map { "\(displayName($0.comm)), \(terms.children($0.descendants))" } ?? "none"
         let spawn = NSMenuItem(title: "\(terms.topSpawners) — \(summary)", action: nil, keyEquivalent: "")
         let sm = NSMenu()
-        if spawners.isEmpty { sm.addItem(NSMenuItem(title: "(none)", action: nil, keyEquivalent: "")) }
+        if spawners.isEmpty { sm.addItem(InfoMenuItem.make("(none)")) }
         for s in spawners {
             let i = NSMenuItem(title: "\(s.comm) [\(s.pid)]  —  \(terms.children(s.descendants))", action: #selector(showDetail(_:)), keyEquivalent: "")
             i.target = self; i.representedObject = NSNumber(value: s.pid)
-            sm.addItem(i)
+            sm.addItem(MenuPolicy.closing(i))   // opens its detail window
         }
         spawn.submenu = sm
         return spawn

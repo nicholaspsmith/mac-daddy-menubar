@@ -80,6 +80,9 @@ final class HoesDuty: NSObject, Duty {
     private let orphans: OrphanWatch
     private let logURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/MacDaddy/hoes.log")
     private let uaLogURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/state/ua-watchdog.log")
+    /// Rules ▸ and Ignored ▸ in the open menu, rebuilt in place when a suggestion is answered.
+    private weak var rulesItem: NSMenuItem?
+    private weak var ignoredItem: NSMenuItem?
 
     init(notifier: Notifier) {
         self.notifier = notifier
@@ -256,7 +259,13 @@ final class HoesDuty: NSObject, Duty {
     func addMenuItems(to menu: NSMenu) {
         let terms = terms
         warningItems().forEach(menu.addItem)
-        menu.addItem(toggleItem("Enabled", isOn: enabled, in: menu) { [weak self] in self?.enabled = $0 })
+        // The list rows below; switching off (or on) starts from nothing, so they go.
+        var listRows: [NSMenuItem] = []
+        menu.addItem(toggleItem("Enabled", isOn: enabled, in: menu) { [weak self] on in
+            self?.enabled = on
+            for row in listRows { row.menu?.removeItem(row) }
+            listRows = []
+        })
         let extra = extraOrphans, noPimp = orphanPIDs
         if !current.isEmpty || !extra.isEmpty || !state.suggestions.isEmpty { menu.addItem(.separator()) }
         // Hoes and hoes with no pimp in one list, hottest first.
@@ -281,8 +290,13 @@ final class HoesDuty: NSObject, Duty {
             }
             row.submenu = sub
             menu.addItem(row)
+            listRows.append(row)
         }
-        if hottest.count > menuLimit { menu.addItem(disabled("and \(hottest.count - menuLimit) more…")) }
+        if hottest.count > menuLimit {
+            let more = InfoMenuItem.make("and \(hottest.count - menuLimit) more…")
+            menu.addItem(more)
+            listRows.append(more)
+        }
         for s in state.suggestions {
             let row = NSMenuItem(title: s.prompt(terms), action: nil, keyEquivalent: "")
             let sub = NSMenu()
@@ -302,20 +316,49 @@ final class HoesDuty: NSObject, Duty {
         let rules = NSMenuItem(title: "Rules", action: nil, keyEquivalent: "")
         rules.submenu = rulesMenu()
         menu.addItem(rules)
+        rulesItem = rules
+        ignoredItem = nil
         if !state.ignored.isEmpty {
             let ig = NSMenuItem(title: "Ignored", action: nil, keyEquivalent: "")
-            let sub = NSMenu()
-            sub.addItem(disabled("Click to stop ignoring"))
-            for i in state.ignored {
-                sub.addItem(item(i.hidden ? i.name : "\(i.name) (not suggested)", #selector(unignore(_:)), i.key))
-            }
-            ig.submenu = sub
+            ig.submenu = ignoredMenu()
             menu.addItem(ig)
+            ignoredItem = ig
         }
         if FileManager.default.fileExists(atPath: logURL.path) {
             let open = NSMenuItem(title: "Open Log", action: #selector(openLog), keyEquivalent: "")
             open.target = self
-            menu.addItem(open)
+            menu.addItem(MenuPolicy.closing(open))   // Console comes to the front
+        }
+    }
+
+    private func ignoredMenu() -> NSMenu {
+        let sub = NSMenu()
+        sub.addItem(InfoMenuItem.make("Click to stop ignoring"))
+        for i in state.ignored {
+            sub.addItem(item(i.hidden ? i.name : "\(i.name) (not suggested)", #selector(unignore(_:)), i.key))
+        }
+        return sub
+    }
+
+    /// A submenu built while the menu is open, given the same keep-open rows.
+    private func finished(_ menu: NSMenu) -> NSMenu {
+        MenuPolicy.finish(menu.items)
+        return menu
+    }
+
+    /// Rules ▸ after a suggestion became a rule; the menu is open, Rules ▸ is not.
+    private func refreshRules() { rulesItem?.submenu = finished(rulesMenu()) }
+
+    /// Ignored ▸ after something was ignored or declined, added below Rules ▸
+    /// if the menu opened without one.
+    private func refreshIgnored() {
+        if let ignoredItem {
+            ignoredItem.submenu = finished(ignoredMenu())
+        } else if let rulesItem, let menu = rulesItem.menu, !state.ignored.isEmpty {
+            let ig = NSMenuItem(title: "Ignored", action: nil, keyEquivalent: "")
+            ig.submenu = finished(ignoredMenu())
+            menu.insertItem(ig, at: menu.index(of: rulesItem) + 1)
+            ignoredItem = ig
         }
     }
 
@@ -323,7 +366,7 @@ final class HoesDuty: NSObject, Duty {
         let m = NSMenu()
         let terms = terms
         let shown = applicableRules
-        if shown.isEmpty { m.addItem(disabled("No rules yet")) }
+        if shown.isEmpty { m.addItem(InfoMenuItem.make("No rules yet")) }
         for r in shown {
             let row = NSMenuItem(title: Self.ruleTitle(r), action: nil, keyEquivalent: "")
             let sub = choices(threshold: r.threshold, minutes: r.minutes, id: r.id, #selector(ruleThreshold(_:)), #selector(ruleMinutes(_:)))
@@ -338,9 +381,9 @@ final class HoesDuty: NSObject, Duty {
         }
         if uaInstalled {
             m.addItem(.separator())
-            m.addItem(disabled("UA Watchdog"))
+            m.addItem(InfoMenuItem.make("UA Watchdog"))
             let text = (try? String(contentsOf: uaLogURL, encoding: .utf8)) ?? ""
-            for line in UAWatchdogLog.summary(text, now: Date(), terms: terms) { m.addItem(indented(disabled(line))) }
+            for line in UAWatchdogLog.summary(text, now: Date(), terms: terms) { m.addItem(indented(InfoMenuItem.make(line))) }
         }
         return m
     }
@@ -371,12 +414,14 @@ final class HoesDuty: NSObject, Duty {
             let i = item("\(v)%", setT, id); i.tag = v; i.state = v == threshold ? .on : .off
             tm.addItem(i)
         }
+        KeepOpenMenu.pickOne(tm.items)
         t.submenu = tm
         let d = NSMenuItem(title: "Duration", action: nil, keyEquivalent: ""), dm = NSMenu()
         for v in Set(HoeRule.minuteChoices + [minutes]).sorted() {
             let i = item(v == 0 ? "On sight" : "\(v) min", setM, id); i.tag = v; i.state = v == minutes ? .on : .off
             dm.addItem(i)
         }
+        KeepOpenMenu.pickOne(dm.items)
         d.submenu = dm
         m.addItem(t); m.addItem(d)
         return m
@@ -388,12 +433,6 @@ final class HoesDuty: NSObject, Duty {
         return i
     }
 
-    private func disabled(_ title: String) -> NSMenuItem {
-        let i = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-        i.isEnabled = false
-        return i
-    }
-
     // MARK: - Actions
 
     private func hoe(for sender: NSMenuItem) -> Hoes.Hoe? {
@@ -401,9 +440,10 @@ final class HoesDuty: NSObject, Duty {
         return current.first { $0.pid == pid }
     }
 
+    /// A Threshold or Duration pick on a rule: its row in Rules ▸ is retitled in place.
     private func editRule(_ sender: NSMenuItem, _ change: (inout HoeRule) -> Void) {
-        guard let id = sender.representedObject as? String else { return }
-        editRule(id: id, change)
+        guard let id = sender.representedObject as? String, let r = editRule(id: id, change) else { return }
+        sender.ancestor(2)?.title = Self.ruleTitle(r)   // value ▸ Threshold ▸ the rule's row
     }
 
     @discardableResult
@@ -415,56 +455,87 @@ final class HoesDuty: NSObject, Duty {
         return state.rules[i]
     }
 
+    /// A Threshold or Duration pick on a suggestion: its row, which states both, is retitled in place.
     private func editSuggestion(_ sender: NSMenuItem, _ change: (inout HoesState.Suggestion) -> Void) {
         guard let key = sender.representedObject as? String, let i = state.suggestions.firstIndex(where: { $0.key == key }) else { return }
         change(&state.suggestions[i])
         save()
+        sender.ancestor(3)?.title = state.suggestions[i].prompt(terms)   // value ▸ Threshold ▸ Adjust ▸ the row
+    }
+
+    /// The row for a hoe, orphan or suggestion that was just dealt with: it
+    /// stays in the open menu, greyed out, saying what happened; the duty's
+    /// line drops it from its count.
+    private func settled(_ sender: NSMenuItem, _ note: String) {
+        if let row = sender.ancestor(1) { MenuPolicy.retire(row, note: note) }
+        refreshSectionTitle(from: sender)
     }
 
     @objc private func openLog() { NSWorkspace.shared.open(logURL) }
 
     /// SIGTERM, then SIGKILL after 5 s; a sure sign you wanted it gone.
     @objc private func endHoe(_ sender: NSMenuItem) {
-        guard let h = hoe(for: sender) else { return }
+        guard let h = hoe(for: sender) else { return settled(sender, "gone") }
         current.removeAll { $0.pid == h.pid }
         switch Self.verify(pid: h.pid, start: h.start) {
-        case nil: return
-        case false?: lastError = terms.changed(name: h.name); return
+        case nil: return settled(sender, "gone")
+        case false?: lastError = terms.changed(name: h.name); return settled(sender, "changed")
         case true?: break
         }
         hoes.markEnded(pid: h.pid, start: h.start, byRule: false)
         guard kill(pid_t(h.pid), SIGTERM) == 0 else {
-            if errno == EPERM { lastError = terms.notAllowed(name: h.name, pid: h.pid) }
-            return
+            let denied = errno == EPERM
+            if denied { lastError = terms.notAllowed(name: h.name, pid: h.pid) }
+            return settled(sender, denied ? "not allowed" : "gone")
         }
         lastError = nil
         append(["KILLED \(h.name) pid=\(h.pid) (ended from the menu at \(Int(h.meanCPU.rounded()))% for \(h.minutes) min)"], to: logURL)
         onSweep?(.hatTip)
         killLater(pid: h.pid, start: h.start)
+        settled(sender, terms.ended)
     }
 
     @objc private func endOrphan(_ sender: NSMenuItem) {
         guard let key = sender.representedObject as? String else { return }
-        orphans.end(key: key)
+        switch orphans.end(key: key) {
+        case .ended?: settled(sender, terms.ended)
+        case .gone?, nil: settled(sender, "gone")
+        case .changed?: settled(sender, "changed")
+        case .denied?: settled(sender, "not allowed")
+        }
     }
 
     @objc private func spareOrphan(_ sender: NSMenuItem) {
         guard let key = sender.representedObject as? String else { return }
         orphans.spare(key: key)
+        settled(sender, "spared")
     }
 
     @objc private func ignoreHoe(_ sender: NSMenuItem) {
-        guard let h = hoe(for: sender) else { return }
+        guard let h = hoe(for: sender) else { return settled(sender, "gone") }
+        let pids = Set(current.filter { $0.key == h.key }.map(\.pid))
         state.ignore(key: h.key, name: h.name)
         current.removeAll { $0.key == h.key }
         append(["IGNORED \(h.name) (\(h.key))"], to: logURL)
         save()
+        // Every row it takes off the list: this one, other copies of the
+        // same program, and a suggestion for it.
+        for row in sender.ancestor(1)?.menu?.items ?? [] {
+            let live = row.submenu?.items.filter { $0.action != nil }.compactMap(\.representedObject) ?? []
+            if live.contains(where: { ($0 as? Int).map(pids.contains) ?? ($0 as? String == h.key) }) {
+                MenuPolicy.retire(row, note: "ignored")
+            }
+        }
+        refreshSectionTitle(from: sender)
+        refreshIgnored()
     }
 
     @objc private func acceptSuggestion(_ sender: NSMenuItem) {
         guard let key = sender.representedObject as? String, let r = state.accept(key: key) else { return }
         append(["RULE added \(r.name): \(r.summary)"], to: logURL)
         save()
+        settled(sender, "rule added")
+        refreshRules()
     }
 
     @objc private func declineSuggestion(_ sender: NSMenuItem) {
@@ -472,6 +543,8 @@ final class HoesDuty: NSObject, Duty {
         state.decline(key: key)
         append(["DECLINED \(key)"], to: logURL)
         save()
+        settled(sender, "declined")
+        refreshIgnored()
     }
 
     @objc private func suggestionThreshold(_ sender: NSMenuItem) { editSuggestion(sender) { $0.threshold = sender.tag } }
@@ -483,6 +556,7 @@ final class HoesDuty: NSObject, Duty {
         guard let id = sender.representedObject as? String, state.deleteRule(id: id) else { return }
         append(["RULE deleted \(id)"], to: logURL)
         save()
+        if let row = sender.ancestor(1) { MenuPolicy.retire(row, note: "deleted") }
     }
 
     @objc private func unignore(_ sender: NSMenuItem) {
@@ -490,5 +564,6 @@ final class HoesDuty: NSObject, Duty {
         state.unignore(key: key)
         append(["UNIGNORED \(key)"], to: logURL)
         save()
+        MenuPolicy.retire(sender, note: "no longer ignored")
     }
 }

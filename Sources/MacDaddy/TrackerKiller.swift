@@ -52,7 +52,7 @@ final class TrackerKiller: NSObject, Duty {
     func addMenuItems(to menu: NSMenu) {
         warningItems().forEach(menu.addItem)
         menu.addItem(toggleItem("Enabled", isOn: enabled, in: menu) { [weak self] in self?.enabled = $0 })
-        let killNowItem = NSMenuItem(title: terms.killNow(count: killsThisSession), action: #selector(killNow), keyEquivalent: "")
+        let killNowItem = NSMenuItem(title: terms.killNow(count: killsThisSession), action: #selector(killNow(_:)), keyEquivalent: "")
         killNowItem.target = self
         menu.addItem(killNowItem)
 
@@ -63,6 +63,7 @@ final class TrackerKiller: NSObject, Duty {
             i.target = self; i.tag = s; i.state = s == intervalSeconds ? .on : .off
             im.addItem(i)
         }
+        KeepOpenMenu.pickOne(im.items)
         interval.submenu = im
         menu.addItem(interval)
 
@@ -78,6 +79,11 @@ final class TrackerKiller: NSObject, Duty {
         menu.addItem(procs)
     }
 
-    @objc private func killNow() { sweep(now: Date()) }
+    /// The menu stays open: the count on this row and on the duty's line follows.
+    @objc private func killNow(_ sender: NSMenuItem) {
+        sweep(now: Date())
+        sender.title = terms.killNow(count: killsThisSession)
+        refreshSectionTitle(from: sender)
+    }
     @objc private func setInterval(_ s: NSMenuItem) { intervalSeconds = s.tag }
 }

@@ -43,7 +43,7 @@ final class OrphanWatch: NSObject {
     /// Called when `current` or the warning changes outside a menu action.
     var onChange: (() -> Void)?
 
-    private enum EndResult { case ended, gone, changed, denied }
+    enum EndResult { case ended, gone, changed, denied }
 
     static let autoEndKey = "hoes.autoEndOrphans"
 
@@ -191,9 +191,11 @@ final class OrphanWatch: NSObject {
     }
 
     /// Ends the orphan with this `key` from the menu.
-    func end(key: String) {
-        guard let s = current.first(where: { Self.key($0) == key }) else { return }
-        end(s)
+    /// nil when it is no longer listed.
+    @discardableResult
+    func end(key: String) -> EndResult? {
+        guard let s = current.first(where: { Self.key($0) == key }) else { return nil }
+        return end(s)
     }
 
     /// Leaves this orphan alone until it exits.

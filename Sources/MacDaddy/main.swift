@@ -183,9 +183,10 @@ final class App: NSObject, NSApplicationDelegate {
             let open = NSMenuItem(title: terms.openLauncher(keys: TriggerText.describe(launcher.trigger)),
                                   action: #selector(openLauncher), keyEquivalent: "")
             open.target = self
-            menu.addItem(open)
+            // Closes the menu: the panel has to take the keyboard focus.
+            menu.addItem(MenuPolicy.closing(open))
         }
-        // The foot: Settings… (the window that replaced the Settings submenu), then Quit.
+        // The foot: Preferences… (the window that replaced the Settings submenu), then Quit.
         menu.addItem(.separator())
         let settingsItem = NSMenuItem(title: "Preferences…", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
@@ -193,6 +194,8 @@ final class App: NSObject, NSApplicationDelegate {
         let quit = NSMenuItem(title: "Quit Mac Daddy", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
         menu.addItem(quit)
+        // Options keep the menu open; read-only rows go grey (issue #41).
+        MenuPolicy.finish(menu.items)
     }
 
     @objc private func openLauncher() { launcher.toggle() }

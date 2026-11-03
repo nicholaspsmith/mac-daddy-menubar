@@ -19,7 +19,7 @@ It has two vocabularies: **Pimp Mode** (the default) and **Normal Mode** (see
 [Mode](#mode)). This README uses the Pimp Mode names with the Normal Mode name
 in brackets the first time.
 
-**Version 1.21.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
+**Version 1.23.0** · [Changelog](https://github.com/nicholaspsmith/mac-daddy-menubar/releases)
 
 ![The menu-bar icon](docs/menubar-icon.png)
 
@@ -48,6 +48,16 @@ controls in a submenu. The line goes bold when something needs you, and red
 when the duty is failing; the submenu then starts with the reason. With the
 launcher on, **Open Pimp Cane** follows. App-wide settings are in the
 **Preferences…** window (⌘,) at the foot of the menu, above Quit.
+
+Picking an option leaves the menu open, with its tick or line updated in
+place: Pimp Slap Now, an interval, Launder Now (its row and line show the
+result when the sweep is done), a rule's threshold, Yes / No on a suggestion,
+Pimp Slap / Ignore / Spare on a hoe. A hoe you dealt with stays listed until
+the menu closes, greyed out and saying so ("— pimp slapped", "— ignored").
+The menu closes only for what opens something else: Quit, the "…" items,
+Open Pimp Cane, Open Activity Monitor, Open Log, a Welfare Queen's detail
+window, and the rows that ask first in an alert (crashing out, reaping
+zombies). Rows you can't click (counts, headings, notes) are grey.
 
 | Item | Purpose |
 |---|---|

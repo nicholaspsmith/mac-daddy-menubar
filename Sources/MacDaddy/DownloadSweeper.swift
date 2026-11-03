@@ -45,7 +45,8 @@ final class DownloadSweeper: NSObject, Duty {
         if enabled && (lastError != nil || now.timeIntervalSince(lastSweep) >= sweepEvery) { sweep(manual: false) }
     }
 
-    private func sweep(manual: Bool) {
+    /// `done` runs on the main thread once the sweep has finished (not if one was already running).
+    private func sweep(manual: Bool, done: (() -> Void)? = nil) {
         guard !sweeping else { return }
         sweeping = true
         let days = daysToKeep
@@ -72,6 +73,7 @@ final class DownloadSweeper: NSObject, Duty {
                 self.log("Could not read Downloads: \(error.localizedDescription)")
             }
             DispatchQueue.main.async {
+                defer { done?() }
                 self.sweeping = false
                 self.lastError = failure
                 guard failure == nil else { return }
@@ -105,11 +107,10 @@ final class DownloadSweeper: NSObject, Duty {
         warningItems().forEach(menu.addItem)
         if lastError != nil, let errItem = menu.items.last {
             errItem.action = #selector(openPrivacy); errItem.target = self   // clicking the ⚠ line opens Files and Folders
+            MenuPolicy.closing(errItem)   // System Settings comes to the front
         }
         menu.addItem(toggleItem("Enabled", isOn: enabled, in: menu) { [weak self] in self?.enabled = $0 })
-        let f = DateFormatter(); f.dateStyle = .short; f.timeStyle = .short
-        let last = lastSweep == .distantPast ? "never" : f.string(from: lastSweep)
-        let run = NSMenuItem(title: "\(terms.sweepNow) (last: \(last), \(trashedLastSweep) trashed)", action: #selector(runNow), keyEquivalent: "")
+        let run = NSMenuItem(title: sweepNowTitle, action: #selector(runNow(_:)), keyEquivalent: "")
         run.target = self
         menu.addItem(run)
         let keep = NSMenuItem(title: "Keep Files For", action: nil, keyEquivalent: "")
@@ -119,14 +120,30 @@ final class DownloadSweeper: NSObject, Duty {
             i.target = self; i.tag = d; i.state = d == daysToKeep ? .on : .off
             km.addItem(i)
         }
+        KeepOpenMenu.pickOne(km.items)
         keep.submenu = km
         menu.addItem(keep)
         let log = NSMenuItem(title: "Open Log", action: #selector(openLog), keyEquivalent: "")
         log.target = self
-        menu.addItem(log)
+        menu.addItem(MenuPolicy.closing(log))   // Console comes to the front
     }
 
-    @objc private func runNow() { sweep(manual: true) }
+    private var sweepNowTitle: String {
+        let f = DateFormatter(); f.dateStyle = .short; f.timeStyle = .short
+        let last = lastSweep == .distantPast ? "never" : f.string(from: lastSweep)
+        return "\(terms.sweepNow) (last: \(last), \(trashedLastSweep) trashed)"
+    }
+
+    /// The menu stays open: once the sweep is done, this row and the duty's
+    /// line show its result (or the ⚠ on the line, if Downloads can't be read).
+    @objc private func runNow(_ sender: NSMenuItem) {
+        sweep(manual: true) { [weak self, weak sender] in
+            guard let self, let sender else { return }
+            sender.title = self.sweepNowTitle
+            self.refreshSectionTitle(from: sender)
+            KeepOpenMenu.didPerform(sender)   // redraw the row with its new title
+        }
+    }
     @objc private func setDays(_ s: NSMenuItem) { daysToKeep = s.tag }
     @objc private func openLog() { NSWorkspace.shared.open(logURL) }
     @objc private func openPrivacy() {

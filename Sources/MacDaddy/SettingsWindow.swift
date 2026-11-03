@@ -10,14 +10,13 @@ import LauncherCore
 import StatusItemKit
 import SwiftUI
 
-/// Mac Daddy's Settings window (menu ▸ Settings…, ⌘,): the mode, Start at
+/// Mac Daddy's Preferences window (menu ▸ Preferences…, ⌘,): the mode, Start at
 /// Login, and the launcher with its hotkey, units and emoji options. It
 /// replaced the old Settings submenu.
 final class SettingsModel: ObservableObject {
     @Published var mode = Mode.load(from: .standard) {
         didSet { if mode != oldValue { onMode(mode) } }
     }
-    @Published var loginEnabled = LoginItem.isEnabled
     @Published var launcherEnabled = LauncherPreferences.enabled
     @Published var trigger: Trigger
     @Published var hotkeyError: String?
@@ -46,17 +45,11 @@ final class SettingsModel: ObservableObject {
     /// Re-reads everything another path may have changed (⌘⇧S in the panel, a failed hotkey).
     func refresh() {
         mode = Mode.load(from: .standard)
-        loginEnabled = LoginItem.isEnabled
         launcherEnabled = launcher.isEnabled
         trigger = launcher.trigger
         hotkeyError = launcher.hotkeyFailure
         tone = LauncherPreferences.skinTone
         panelReset = false
-    }
-
-    func setLogin(_ on: Bool) {
-        LoginItem.set(on)
-        loginEnabled = LoginItem.isEnabled
     }
 
     func setLauncher(_ on: Bool) {
@@ -107,13 +100,13 @@ struct SettingsView: View {
 
     var body: some View {
         let terms = Terms(model.mode)
-        Form {
+        PreferencesForm {
             Section("General") {
                 Picker(terms.modeMenu, selection: $model.mode) {
                     ForEach(Mode.allCases, id: \.self) { Text(terms.modeName($0)).tag($0) }
                 }
                 .pickerStyle(.segmented)
-                Toggle("Start at Login", isOn: Binding(get: { model.loginEnabled }, set: { model.setLogin($0) }))
+                StartAtLoginToggle()
             }
             Section {
                 Toggle(terms.launcherToggle, isOn: Binding(get: { model.launcherEnabled }, set: { model.setLauncher($0) }))
@@ -143,51 +136,41 @@ struct SettingsView: View {
             } header: {
                 Text(terms.launcher)
             } footer: {
-                Text("Opens a panel over any app for apps, arithmetic, unit conversions and emoji. ⌘↩ in the panel hands the query to Spotlight, which needs Mac Daddy allowed in Accessibility.")
-                    .font(.callout).foregroundStyle(.secondary)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            Section {
-                Text("Version \(AppVersion.string)").font(.callout).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                PreferencesNote("Opens a panel over any app for apps, arithmetic, unit conversions and emoji. ⌘↩ in the panel hands the query to Spotlight, which needs Mac Daddy allowed in Accessibility.")
             }
         }
-        .formStyle(.grouped)
-        .frame(width: 460)
-        .padding(.vertical, 8)
     }
 }
 
-final class SettingsWindowController: NSObject, NSWindowDelegate {
-    private var window: NSWindow?
+/// The window: StatusItemKit's shared `PreferencesPane` ("Mac Daddy
+/// Preferences", Esc / ⌘W close it). A hotkey recording stops when the window
+/// is shown again, closes or stops being key, so the recorder's app-wide
+/// monitor never swallows a keystroke meant elsewhere.
+final class SettingsWindowController {
     let model: SettingsModel
+    private let pane: PreferencesPane
+    private var resignObserver: NSObjectProtocol?
+
     init(model: SettingsModel) {
         self.model = model
-        super.init()
-        model.isWindowKey = { [weak self] in self?.window?.isKeyWindow ?? false }
+        pane = PreferencesPane(appName: "Mac Daddy") { SettingsView(model: model) }
+        pane.onShow = { [weak model] in
+            model?.stopRecording()   // showing again abandons any recording left running
+            model?.refresh()
+        }
+        pane.onClose = { [weak model] in model?.stopRecording() }
+        model.isWindowKey = { [weak pane] in pane?.window?.isKeyWindow ?? false }
     }
+
+    deinit { resignObserver.map(NotificationCenter.default.removeObserver) }
 
     func show() {
-        model.stopRecording()   // showing again abandons any recording left running
-        model.refresh()
-        if window == nil {
-            let hosting = NSHostingController(rootView: SettingsView(model: model))
-            // NSWindow(contentViewController:) doesn't size itself to a hosted SwiftUI view on its
-            // own; without this the window opens as just its title bar.
-            hosting.sizingOptions = [.preferredContentSize]
-            let w = EscClosableWindow(contentViewController: hosting)
-            w.title = "Mac Daddy Preferences"
-            w.styleMask.remove(.resizable)
-            w.isReleasedWhenClosed = false
-            w.delegate = self
-            window = w
-            w.center()
+        if resignObserver == nil {
+            // PreferencesPane is the window's delegate, so watch for resigning key here.
+            resignObserver = NotificationCenter.default.addObserver(
+                forName: NSWindow.didResignKeyNotification, object: pane.makeWindow(), queue: .main
+            ) { [weak model] _ in model?.stopRecording() }
         }
-        NSApp.activate(ignoringOtherApps: true)
-        window?.makeKeyAndOrderFront(nil)
+        pane.show()
     }
-
-    func windowDidResignKey(_ notification: Notification) { model.stopRecording() }
-    func windowWillClose(_ notification: Notification) { model.stopRecording() }
 }

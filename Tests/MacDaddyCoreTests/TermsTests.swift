@@ -68,6 +68,8 @@ final class TermsTests: XCTestCase {
     func testEndAndKillNow() {
         XCTAssertEqual(p.end, "Pimp Slap")
         XCTAssertEqual(n.end, "End")
+        XCTAssertEqual(p.ended, "pimp slapped")
+        XCTAssertEqual(n.ended, "ended")
         XCTAssertEqual(p.killNow(count: 3), "Pimp Slap Now (3 this session)")
         XCTAssertEqual(n.killNow(count: 3), "Kill Now (3 this session)")
         XCTAssertEqual(p.trackerTitle(enabled: true, kills: 4), "Federal Agents — 4 pimp slapped")
