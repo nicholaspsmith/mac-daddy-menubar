@@ -7,7 +7,7 @@ import XCTest
 final class PanelPlacementTests: XCTestCase {
     var defaults: UserDefaults!
     override func setUp() {
-        defaults = UserDefaults(suiteName: "menucrane-tests-\(UUID().uuidString)")
+        defaults = scratchDefaults("launcher-tests")
     }
 
     func testSavedPointOnAScreenIsUsed() {
