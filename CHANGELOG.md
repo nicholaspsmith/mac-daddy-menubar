@@ -8,6 +8,14 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.23.0] - 2026-11-03
+
+- Picking an option leaves the menu open: Pimp Slap Now (Kill Now), Launder Now (Sweep Now), an interval or how long to keep downloads, a rule's threshold or duration, Yes / No on a suggestion, and Pimp Slap (End) / Ignore / Spare on a hoe. Ticks move and counts update in place; the duty's line follows
+- A hoe you pimp slapped, ignored or spared stays in the open menu, greyed out and saying so ("— pimp slapped", "— ignored"), so nothing stale can be clicked; a new rule shows up in Rules at once
+- The menu still closes for what opens something else: Quit, the "…" items, Open Pimp Cane, Open Activity Monitor, Open Log, a Welfare Queen's detail window, and the rows that ask first (crashing out, reaping zombies)
+- Rows you can't click (counts, headings, notes) are always grey
+- The Preferences window is now the one every Menumon app shares (same look; Start at Login, the note and the version come from StatusItemKit)
+
 ## [1.22.0] - 2026-11-02
 
 - Holding modifier keys like ⌘⌥ now works correctly for navigation keys (arrows, Home, End, Page Up, Page Down, Forward Delete, Help); the `fn` flag is no longer incorrectly included in these combinations.

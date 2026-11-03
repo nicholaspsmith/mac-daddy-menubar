@@ -82,6 +82,8 @@ public struct Terms: Equatable {
     // MARK: Ending things
 
     public var end: String { pick("Pimp Slap", "End") }
+    /// A row whose process was just ended from the menu, which stays open: "… — pimp slapped".
+    public var ended: String { pick("pimp slapped", "ended") }
     public func notAllowed(name: String, pid: Int) -> String { pick("Not allowed to pimp slap", "Not allowed to end") + " \(name) [\(pid)]" }
     public func changed(name: String) -> String { "\(name) changed — not " + pick("pimp slapped", "ended") }
 
