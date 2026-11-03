@@ -186,13 +186,10 @@ final class TermsTests: XCTestCase {
 
     // MARK: - Mode setting
 
-    func defaults() -> (UserDefaults, String) {
-        let suite = "MacDaddyTests.mode.\(UUID().uuidString)"
-        return (UserDefaults(suiteName: suite)!, suite)
-    }
+    func defaults() -> UserDefaults { scratchDefaults("MacDaddyTests.mode") }
 
     func testModeDefaultsToPimp() {
-        let (d, suite) = defaults(); defer { d.removePersistentDomain(forName: suite) }
+        let d = defaults()
         XCTAssertEqual(Mode.load(from: d), .pimp)
         Mode.normal.save(to: d)
         XCTAssertEqual(Mode.load(from: d), .normal)
@@ -200,7 +197,7 @@ final class TermsTests: XCTestCase {
     }
 
     func testPlainSymbolIconMigratesToNormalMode() {
-        let (d, suite) = defaults(); defer { d.removePersistentDomain(forName: suite) }
+        let d = defaults()
         d.set("symbol", forKey: "iconStyle")
         Mode.migrateIconStyle(in: d)
         XCTAssertEqual(Mode.load(from: d), .normal)
@@ -208,7 +205,7 @@ final class TermsTests: XCTestCase {
     }
 
     func testCharacterIconMigratesToPimpMode() {
-        let (d, suite) = defaults(); defer { d.removePersistentDomain(forName: suite) }
+        let d = defaults()
         d.set("character", forKey: "iconStyle")
         Mode.migrateIconStyle(in: d)
         XCTAssertEqual(Mode.load(from: d), .pimp)
@@ -216,7 +213,7 @@ final class TermsTests: XCTestCase {
     }
 
     func testMigrationNeverOverridesAChosenMode() {
-        let (d, suite) = defaults(); defer { d.removePersistentDomain(forName: suite) }
+        let d = defaults()
         Mode.pimp.save(to: d)
         d.set("symbol", forKey: "iconStyle")
         Mode.migrateIconStyle(in: d)

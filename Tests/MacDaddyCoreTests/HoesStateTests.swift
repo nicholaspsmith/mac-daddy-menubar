@@ -141,9 +141,7 @@ final class HoesStateTests: XCTestCase {
     }
 
     func testPersistenceRoundTrip() {
-        let suite = "MacDaddyTests.hoes.\(UUID().uuidString)"
-        let d = UserDefaults(suiteName: suite)!
-        defer { d.removePersistentDomain(forName: suite) }
+        let d = scratchDefaults("MacDaddyTests.hoes")
         XCTAssertEqual(HoesState.load(from: d), HoesState())
         var s = HoesState()
         s.ensureBuiltIns(UAWatchdog.builtInRules, paused: false)

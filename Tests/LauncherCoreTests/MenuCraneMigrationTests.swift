@@ -43,8 +43,12 @@ final class MenuCraneMigrationTests: XCTestCase {
     }
 
     func testApplyOnceRunsOnce() throws {
-        let domain = "launcher-tests-\(UUID().uuidString)"
+        // applyOnce reads the domain back by name, which a path-named
+        // scratch suite can't do, so this one uses a fixed domain: at most
+        // one plist, reused, rather than one per run.
+        let domain = "com.nicholaspsmith.MacDaddy.tests.migration"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: domain))
+        defaults.removePersistentDomain(forName: domain)
         defer { defaults.removePersistentDomain(forName: domain) }
         let first = MenuCraneMigration.applyOnce(old: old, installed: true, to: defaults, domain: domain)
         XCTAssertEqual(first?.contains(LauncherKeys.enabled), true)
