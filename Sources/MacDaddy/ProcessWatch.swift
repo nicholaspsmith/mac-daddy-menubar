@@ -6,6 +6,9 @@
 
 import AppKit
 import StatusItemKit
+import os
+
+private let processLog = Logger(subsystem: "com.nicholaspsmith.MacDaddy", category: "processes")
 
 func readProcessLimit() -> Int {
     var size = 0
@@ -66,6 +69,8 @@ final class ProcessWatch: NSObject, Duty {
     private let notifier: Notifier
     private let history = CountHistory(maxLen: 25)
     private let respawn = RespawnDetector(windowSize: 12, minDistinct: 5, minChurnRatio: 5)
+    /// Names restarted on purpose (what Federal Agents kills), never reported as crashing out.
+    var expectedRespawns: () -> Set<String> = { [] }
     private let pollQueue = DispatchQueue(label: "macdaddy.processwatch")
     private var pollInFlight = false
     private var lastPoll = Date.distantPast
@@ -137,47 +142,56 @@ final class ProcessWatch: NSObject, Duty {
         var spark = history.sparkline()
         if let r = history.range, r.max > r.min { spark += "   \(r.min)→\(r.max)" }
         let sparkItem = NSMenuItem()
-        sparkItem.view = MenuBuilder.textView(spark, font: mono, leftPad: 34)
+        sparkItem.view = MenuBuilder.textView(spark, font: mono)
         menu.addItem(sparkItem)
 
-        let loops = respawn.looping()
+        let loops = respawn.looping(ignoring: expectedRespawns())
         if !loops.isEmpty {
-            let h = NSMenuItem(title: "⚠ Crash-looping (\(loops.count))", action: nil, keyEquivalent: "")
+            let h = NSMenuItem(title: terms.crashingOut(loops.count), action: nil, keyEquivalent: "")
             h.attributedTitle = NSAttributedString(string: h.title, attributes: [.foregroundColor: NSColor.systemRed])
             let sub = NSMenu()
+            let byPID = Dictionary(latestProcs.map { ($0.pid, $0) }, uniquingKeysWith: { a, _ in a })
             for l in loops.prefix(10) {
-                sub.addItem(NSMenuItem(title: "\(displayName(l.comm))  —  \(l.distinct) PIDs / peak \(l.peak) live  (in \(respawnWindow * Int(pollSeconds))s)", action: nil, keyEquivalent: ""))
+                let by = l.parent <= 1 ? "launchd" : byPID[l.parent].map { "\(displayName($0.comm)) [\(l.parent)]" } ?? "pid \(l.parent)"
+                let i = NSMenuItem(title: "\(displayName(l.comm))  —  restarted \(l.distinct)× in \(respawnWindow * Int(pollSeconds))s by \(by)",
+                                   action: #selector(fixCrashing(_:)), keyEquivalent: "")
+                i.target = self; i.representedObject = LoopBox(l)
+                sub.addItem(i)
             }
             h.submenu = sub
-            menu.addItem(indented(h))
+            menu.addItem(h)
         }
-
-        let spawn = NSMenuItem(title: terms.topSpawners, action: nil, keyEquivalent: "")
-        let sm = NSMenu()
-        let spawners = topSpawners(latestProcs, topN: 10)
-        if spawners.isEmpty { sm.addItem(NSMenuItem(title: "(none)", action: nil, keyEquivalent: "")) }
-        for s in spawners {
-            let i = NSMenuItem(title: "\(s.comm) [\(s.pid)]  —  \(s.descendants) desc", action: #selector(showDetail(_:)), keyEquivalent: "")
-            i.target = self; i.representedObject = NSNumber(value: s.pid)
-            sm.addItem(i)
-        }
-        spawn.submenu = sm
-        menu.addItem(indented(spawn))
 
         if zombies.count > 0 {
             let z = NSMenuItem(title: "Zombies  \(zombies.count)", action: nil, keyEquivalent: "")
-            menu.addItem(indented(z))
+            menu.addItem(z)
         }
         if let p = zombies.quittable {
             let q = NSMenuItem(title: terms.reapItem(name: displayName(p.comm), pid: p.pid, zombies: p.zombies), action: #selector(quitZombieParent(_:)), keyEquivalent: "")
             q.target = self; q.representedObject = p
-            q.indentationLevel = 2
             menu.addItem(q)
         }
 
         let am = NSMenuItem(title: "Open Activity Monitor", action: #selector(openActivityMonitor), keyEquivalent: "")
         am.target = self
-        menu.addItem(indented(am))
+        menu.addItem(am)
+    }
+
+    /// Welfare Queens (Top Spawners): one summary line in the duties section, naming the
+    /// process with the most children; its submenu lists the top ten.
+    func welfareQueensItem() -> NSMenuItem {
+        let spawners = topSpawners(latestProcs, topN: 10)
+        let summary = spawners.first.map { "\(displayName($0.comm)), \(terms.children($0.descendants))" } ?? "none"
+        let spawn = NSMenuItem(title: "\(terms.topSpawners) — \(summary)", action: nil, keyEquivalent: "")
+        let sm = NSMenu()
+        if spawners.isEmpty { sm.addItem(NSMenuItem(title: "(none)", action: nil, keyEquivalent: "")) }
+        for s in spawners {
+            let i = NSMenuItem(title: "\(s.comm) [\(s.pid)]  —  \(terms.children(s.descendants))", action: #selector(showDetail(_:)), keyEquivalent: "")
+            i.target = self; i.representedObject = NSNumber(value: s.pid)
+            sm.addItem(i)
+        }
+        spawn.submenu = sm
+        return spawn
     }
 
     @objc private func showDetail(_ sender: NSMenuItem) {
@@ -214,6 +228,83 @@ final class ProcessWatch: NSObject, Duty {
         refresh()
     }
 
+    /// Clicking a crashing-out row: ending the process is pointless (it comes
+    /// straight back), so this stops whatever restarts it, after asking.
+    @objc private func fixCrashing(_ sender: NSMenuItem) {
+        guard let l = (sender.representedObject as? LoopBox)?.loop else { return }
+        let name = displayName(l.comm)
+        let all = readAllProcs() ?? latestProcs
+        let parentRec = all.first { $0.pid == l.parent }
+        var label: String?
+        if l.parent <= 1 {
+            let live = Set(all.filter { $0.comm == l.comm }.map(\.pid)).union(l.livePID.map { [$0] } ?? [])
+            let services = LaunchctlServices.parse(Shell.run("/bin/launchctl", ["print", "gui/\(getuid())"]) ?? "")
+            label = live.compactMap { services[$0] }.first
+        }
+        let fix = CrashFix.plan(parent: l.parent, parentRec: parentRec, agentLabel: label, user: NSUserName(), myPID: Int(getpid()))
+        let report = Self.latestCrashReport(for: name)
+
+        let alert = NSAlert()
+        alert.messageText = terms.crashingOutTitle(name: name)
+        var info = "It was restarted \(l.distinct) times in the last \(respawnWindow * Int(pollSeconds)) seconds, so ending it does nothing: it just comes back. The fix is to stop what restarts it.\n\n"
+        var action: (() -> String?)?   // returns an error message, or nil on success
+        switch fix {
+        case .bootout(let label):
+            info += "Your launchd agent \(label) restarts it. Stopping the agent unloads it until you next log in (or its app loads it again)."
+            alert.addButton(withTitle: "Stop \(label)")
+            action = { Shell.run("/bin/launchctl", ["bootout", "gui/\(getuid())/\(label)"]) == nil ? "launchctl couldn't unload \(label)." : nil }
+        case .shutDownSimulators:
+            info += "An iOS Simulator (launchd_sim) restarts it. Shutting down the simulators stops it."
+            alert.addButton(withTitle: "Shut Down Simulators")
+            action = { Shell.run("/usr/bin/xcrun", ["simctl", "shutdown", "all"]) == nil ? "simctl couldn't shut the simulators down." : nil }
+        case .quitParent(let pid, let comm):
+            let parentName = displayName(comm)
+            info += "\(parentName) [\(pid)] keeps starting it. \(terms.quitting) \(parentName) stops the loop."
+            alert.addButton(withTitle: terms.reapAlertButton(name: parentName))
+            action = {
+                guard ZombieCount.stillSameProcess(expectedComm: comm, currentPath: executablePath(of: pid_t(pid))) else { return nil }
+                if kill(pid_t(pid), SIGTERM) == 0 || errno == ESRCH { return nil }
+                return terms.notAllowedToQuit(name: parentName, pid: pid)
+            }
+        case .none(let reason):
+            info += reason
+        }
+        if report != nil { info += "\n\nIts latest crash report may say why it keeps crashing." }
+        alert.informativeText = info
+        if report != nil { alert.addButton(withTitle: "Show Crash Report") }
+        alert.addButton(withTitle: action == nil ? "OK" : "Cancel")
+
+        NSApp.activate(ignoringOtherApps: true)
+        let response = alert.runModal()
+        let fixButton: NSApplication.ModalResponse? = action == nil ? nil : .alertFirstButtonReturn
+        let reportButton: NSApplication.ModalResponse? = report == nil ? nil : (action == nil ? .alertFirstButtonReturn : .alertSecondButtonReturn)
+        if response == fixButton, let action {
+            if let error = action() {
+                let e = NSAlert(); e.messageText = error; e.runModal()
+            } else {
+                processLog.notice("crashing out: stopped \(name, privacy: .public) via \(String(describing: fix), privacy: .public)")
+            }
+            refresh()
+        } else if response == reportButton, let report {
+            NSWorkspace.shared.open(report)
+        }
+    }
+
+    /// The newest crash report for `name` from the last day, if any.
+    static func latestCrashReport(for name: String) -> URL? {
+        let dir = FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Logs/DiagnosticReports")
+        let keys: [URLResourceKey] = [.contentModificationDateKey]
+        guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: keys) else { return nil }
+        let dayAgo = Date().addingTimeInterval(-86_400)
+        return files
+            .filter { $0.lastPathComponent.hasPrefix(name + "-") && ["ips", "crash"].contains($0.pathExtension) }
+            .compactMap { url -> (URL, Date)? in
+                guard let d = try? url.resourceValues(forKeys: Set(keys)).contentModificationDate, d > dayAgo else { return nil }
+                return (url, d)
+            }
+            .max { $0.1 < $1.1 }?.0
+    }
+
     private func refresh() {
         lastPoll = .distantPast
         tick(now: Date())
@@ -222,4 +313,10 @@ final class ProcessWatch: NSObject, Duty {
     @objc private func openActivityMonitor() {
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Activity Monitor.app"))
     }
+}
+
+/// Carries a `RespawnDetector.Looping` through `NSMenuItem.representedObject`.
+private final class LoopBox: NSObject {
+    let loop: RespawnDetector.Looping
+    init(_ loop: RespawnDetector.Looping) { self.loop = loop }
 }

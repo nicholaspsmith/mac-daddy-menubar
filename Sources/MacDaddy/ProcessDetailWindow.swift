@@ -7,8 +7,8 @@
 import AppKit
 import Foundation
 
-// Window that opens when you click a Skanky Ass Hoes (top spawners) entry. Re-runs ps every 2s
-// while open so the descendant list and elapsed times stay live; closes itself
+// Window that opens when you click a Welfare Queens (Top Spawners) entry. Re-runs ps every 2s
+// while open so the children list and elapsed times stay live; closes itself
 // once it can't find the target PID anymore (the process exited).
 final class ProcessDetailWindowController: NSWindowController, NSWindowDelegate {
     private let pid: Int
@@ -63,7 +63,7 @@ final class ProcessDetailWindowController: NSWindowController, NSWindowDelegate 
         summaryField.maximumNumberOfLines = 0
         summaryField.translatesAutoresizingMaskIntoConstraints = false
 
-        let childrenHeader = NSTextField(labelWithString: "Descendants")
+        let childrenHeader = NSTextField(labelWithString: "Children (grandchildren included)")
         childrenHeader.font = NSFont.boldSystemFont(ofSize: 12)
         childrenHeader.translatesAutoresizingMaskIntoConstraints = false
 

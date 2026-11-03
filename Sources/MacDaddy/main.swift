@@ -49,6 +49,10 @@ final class App: NSObject, NSApplicationDelegate {
         retireUAWatchdogAgent()
         notifier.requestAuthorization()
         EditMenu.install()
+        processWatch.expectedRespawns = { [weak self] in
+            guard let t = self?.tracker, t.enabled else { return [] }
+            return Set(TrackerKiller.targets.map(\.process).filter(t.targetEnabled))
+        }
         launcher.onOpenSettings = { [weak self] in self?.openSettings() }
         // Menu Crane holds ⌘Space until it has quit; the launcher starts after.
         menuCraneCutover.run { [weak self] in self?.launcher.start() }
@@ -167,6 +171,7 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         // Each cleanup duty is one summary line; its controls open as a submenu.
         cleanupDuties.forEach { menu.addItem($0.sectionItem()) }
+        menu.addItem(processWatch.welfareQueensItem())
         if launcher.isEnabled {
             menu.addItem(.separator())
             if let failure = launcher.hotkeyFailure {
@@ -182,7 +187,7 @@ final class App: NSObject, NSApplicationDelegate {
         }
         // The foot: Settings… (the window that replaced the Settings submenu), then Quit.
         menu.addItem(.separator())
-        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        let settingsItem = NSMenuItem(title: "Preferences…", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
         let quit = NSMenuItem(title: "Quit Mac Daddy", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")

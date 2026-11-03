@@ -8,6 +8,27 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.22.0] - 2026-11-02
+
+- Apollo Monitor's icon now displays the current level in grey when it cannot be controlled (due to missing Accessibility permissions or connectivity issues), allowing you to monitor the level even when changes are disabled.
+- The minute cue now triggers one second earlier.
+
+## [1.21.0] - 2026-11-02
+
+- Crash-looping is **Crashing out** in Pimp Mode, and each row says what keeps restarting the process
+- Clicking a row fixes it, after asking: ending a crash-looping process does nothing (it comes straight back), so Mac Daddy stops what restarts it. Your launchd agent is unloaded until you next log in, iOS Simulators are shut down, and a script or app of yours that keeps starting it is pimp slapped (quit). A macOS system service is left alone, with the reason. **Show Crash Report** opens its latest crash report when there is one
+- What Federal Agents (Media Tracking) kills no longer shows as crashing out: launchd restarting it is expected. It also hits the iOS Simulator's copies, which is what put photoanalysisd on the list
+- Settings… is now **Preferences…** (⌘,), and its window is Mac Daddy Preferences
+
+## [1.20.0] - 2026-11-02
+
+- Skanky Ass Hoes is now **Welfare Queens** (still Top Spawners in Normal Mode), since they have so many children
+- Each row counts its children ("42 children", was "42 desc"), and the detail window's list is headed Children (grandchildren included)
+- Downloads are **laundered** in Pimp Mode: "Downloads — laundered 11/2/26" and **Launder Now** (still swept and Sweep Now in Normal Mode)
+- Media Tracking is **Federal Agents** in Pimp Mode (still Media Tracking in Normal Mode)
+- The Processes section now lines up with the rest of the menu instead of being indented
+- Welfare Queens moves down beside Hoes as its own line, naming the process with the most children ("Welfare Queens — node, 42 children")
+
 ## [1.19.0] - 2026-11-02
 
 - The minute cue now appears one second earlier
