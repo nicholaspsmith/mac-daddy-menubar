@@ -8,6 +8,14 @@ without one is refused (`[no release]` in the tip commit is the only exception).
 Versions follow [Semantic Versioning](https://semver.org/). The full rule:
 [StatusItemKit — Releases](https://github.com/nicholaspsmith/StatusItemKit#releases-every-push-is-one).
 
+## [1.24.0] - 2026-11-03
+
+- The status dot in keep-open menu rows now aligns with other items instead of being pushed to the right.
+- Keep-open menu rows with status dots are no longer clipped at the end when the title is long.
+- The Settings submenu has been replaced by a standard Preferences window (⌘,) that includes a Start at Login toggle and icon picker.
+- Menus now stay open when you select an option, allowing you to make multiple changes without reopening the menu.
+- Menu sections can now be folded away to hide their contents, and read-only information rows are always displayed in grey.
+
 ## [1.23.0] - 2026-11-03
 
 - Picking an option leaves the menu open: Pimp Slap Now (Kill Now), Launder Now (Sweep Now), an interval or how long to keep downloads, a rule's threshold or duration, Yes / No on a suggestion, and Pimp Slap (End) / Ignore / Spare on a hoe. Ticks move and counts update in place; the duty's line follows
